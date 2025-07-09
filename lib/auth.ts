@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { SignJWT, jwtVerify } from 'jose'
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+import { API_CONFIG } from '../config/api-keys'
 
 export interface UserData {
   id: string
@@ -45,7 +46,16 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 export async function createUser(email: string, password: string, userData: Partial<UserData> = {}): Promise<UserData> {
   try {
     const hashedPassword = await hashPassword(password)
-    const supabase = await createClient()
+    
+    // Create Supabase client with service role key
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration not found')
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     const { data: user, error } = await supabase
       .from('users')
@@ -85,7 +95,15 @@ export async function createUser(email: string, password: string, userData: Part
 
 export async function findUserByEmail(email: string): Promise<(UserData & { passwordHash: string }) | null> {
   try {
-    const supabase = await createClient()
+    // Create Supabase client with service role key
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration not found')
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     const { data: user, error } = await supabase
       .from('users')
@@ -116,7 +134,15 @@ export async function findUserByEmail(email: string): Promise<(UserData & { pass
 
 export async function findUserById(id: string): Promise<UserData | null> {
   try {
-    const supabase = await createClient()
+    // Create Supabase client with service role key
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration not found')
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     const { data: user, error } = await supabase
       .from('users')
