@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText } from "ai"
-import { getOpenAIKey } from "@/config/api-keys"
+import { getOpenAIKey } from "../../../config/api-keys"
 
 export const maxDuration = 30
 

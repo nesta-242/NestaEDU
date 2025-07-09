@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
-import { getOpenAIKey } from "@/config/api-keys"
+import { getOpenAIKey } from "../../../config/api-keys"
 
 export async function POST(request: NextRequest) {
   try {

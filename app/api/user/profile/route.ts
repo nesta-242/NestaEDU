@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@/lib/auth'
-import { API_CONFIG } from '@/config/api-keys'
+import { API_CONFIG } from '../../../../config/api-keys'
 
 // Get Supabase configuration with fallbacks
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
