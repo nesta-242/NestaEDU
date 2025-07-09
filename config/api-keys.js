@@ -69,8 +69,5 @@ export function validateEnvironment() {
   return true
 }
 
-// Set the environment variables
-if (typeof process !== 'undefined') {
-  process.env.OPENAI_API_KEY = getOpenAIKey()
-  process.env.SUPABASE_SERVICE_ROLE_KEY = getSupabaseServiceRoleKey()
-} 
+// Note: Environment variables are read directly from process.env
+// No need to set them here as they should be provided by the runtime environment 
