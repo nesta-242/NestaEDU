@@ -1,0 +1,130 @@
+export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { verifyToken } from '@/lib/auth'
+import { API_CONFIG } from '@/config/api-keys'
+
+// Get Supabase configuration with fallbacks
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+
+// Validate configuration
+if (!supabaseUrl || supabaseUrl === 'your-supabase-url') {
+  throw new Error('Supabase URL not configured')
+}
+
+if (!supabaseServiceKey || supabaseServiceKey === 'your-supabase-service-role-key') {
+  throw new Error('Supabase service role key not configured')
+}
+
+// Create Supabase client with service role key to bypass RLS
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+// Log configuration for debugging (remove in production)
+console.log('Supabase URL:', supabaseUrl)
+console.log('Service role key length:', supabaseServiceKey?.length || 0)
+console.log('Service role key starts with:', supabaseServiceKey?.substring(0, 20) + '...')
+
+// GET - Retrieve user profile
+export async function GET(request: NextRequest) {
+  try {
+    // Get user ID from request headers (set by middleware)
+    const userId = request.headers.get('x-user-id')
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    console.log('Fetching profile for user ID:', userId)
+
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('id, email, first_name, last_name, phone, grade_level, school, avatar')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('Supabase error fetching profile:', error)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    console.log('Profile fetched successfully:', { id: profile.id, hasAvatar: !!profile.avatar })
+
+    return NextResponse.json({
+      id: profile.id,
+      email: profile.email,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      phone: profile.phone,
+      gradeLevel: profile.grade_level,
+      school: profile.school,
+      avatar: profile.avatar,
+    })
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT - Update user profile
+export async function PUT(request: NextRequest) {
+  try {
+    // Get user ID from request headers (set by middleware)
+    const userId = request.headers.get('x-user-id')
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { firstName, lastName, phone, gradeLevel, school, avatar } = await request.json()
+
+    console.log('Updating profile for user:', userId, 'with avatar:', !!avatar)
+
+    const { data: updatedProfile, error } = await supabase
+      .from('users')
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone,
+        grade_level: gradeLevel,
+        school: school,
+        avatar: avatar,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+      .select('id, email, first_name, last_name, phone, grade_level, school, avatar')
+      .single()
+
+    if (error) {
+      console.error('Supabase error updating profile:', error)
+      return NextResponse.json(
+        { error: `Failed to update profile: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
+    console.log('Profile updated successfully:', { id: updatedProfile.id, hasAvatar: !!updatedProfile.avatar })
+
+    return NextResponse.json({
+      id: updatedProfile.id,
+      email: updatedProfile.email,
+      firstName: updatedProfile.first_name,
+      lastName: updatedProfile.last_name,
+      phone: updatedProfile.phone,
+      gradeLevel: updatedProfile.grade_level,
+      school: updatedProfile.school,
+      avatar: updatedProfile.avatar,
+    })
+  } catch (error) {
+    console.error('Error updating user profile:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+} 

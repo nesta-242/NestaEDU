@@ -1,0 +1,457 @@
+/* Using system fonts for reliability */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Sketch-style black and white theme */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 8%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 35%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 8%;
+    --radius: 0.5rem;
+
+    /* Sketch-style variables - enhanced for grid */
+    --sketch-line: 0 0% 85%;
+    --sketch-shadow: 0 0% 85%;
+    --paper-texture: 0 0% 99%;
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 95%;
+
+    /* Dark mode grid */
+    --sketch-line: 0 0% 20%;
+    --sketch-shadow: 0 0% 15%;
+    --paper-texture: 0 0% 8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Courier New", "Monaco", "Consolas", "Liberation Mono", monospace;
+    /* Subtle precision grid background, theme-adaptive */
+    background-image:
+      /* Dots at intersections */
+      radial-gradient(circle at 1px 1px, hsl(var(--sketch-line)) 1.2px, transparent 0),
+      /* Vertical lines */
+      linear-gradient(90deg, hsl(var(--sketch-line)) 1px, transparent 1px),
+      /* Horizontal lines */
+      linear-gradient(0deg, hsl(var(--sketch-line)) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px, 40px 40px;
+    background-position: 0 0, 0 0, 0 0;
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  /* Enhanced paper texture overlay with grid */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 19px,
+        hsl(var(--sketch-line)) 20px,
+        hsl(var(--sketch-line)) 21px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 19px,
+        hsl(var(--sketch-line)) 20px,
+        hsl(var(--sketch-line)) 21px
+      );
+    opacity: 0.02;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Additional subtle texture for depth */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle at 25% 25%, hsl(var(--sketch-line)) 1px, transparent 1px),
+      radial-gradient(circle at 75% 75%, hsl(var(--sketch-line)) 1px, transparent 1px);
+    background-size: 40px 40px, 60px 60px;
+    opacity: 0.01;
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+/* Typography Classes - Updated for architectural precision */
+.font-handwriting {
+  font-family: "Helvetica Neue", "Arial", "Segoe UI", "Roboto", sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.font-notebook {
+  font-family: "System UI", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.font-code {
+  font-family: "Courier New", "Consolas", "Liberation Mono", monospace;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* Sketch-style components */
+.sketch-border {
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  position: relative;
+}
+
+.sketch-border::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0;
+  transform: rotate(0.5deg);
+  z-index: -1;
+}
+
+.sketch-shadow {
+  box-shadow: 3px 3px 0px hsl(var(--sketch-shadow)), 6px 6px 0px hsl(var(--sketch-shadow)), 9px 9px 0px
+    hsl(var(--sketch-shadow));
+}
+
+.sketch-button {
+  @apply sketch-border;
+  background: hsl(var(--background) / 0.8);
+  transition: all 0.2s ease;
+  transform: rotate(-0.5deg);
+}
+
+.sketch-button:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow: 2px 4px 0px hsl(var(--sketch-shadow)), 4px 8px 0px hsl(var(--sketch-shadow));
+}
+
+.sketch-card {
+  @apply sketch-border sketch-shadow;
+  background: hsl(var(--card) / 0.9);
+  transform: rotate(-0.2deg);
+  transition: all 0.3s ease;
+}
+
+.sketch-card:hover {
+  transform: rotate(0deg) translateY(-1px);
+}
+
+/* Notion-style layouts */
+.notion-sidebar {
+  background: hsl(var(--muted));
+  border-right: 1px solid hsl(var(--border));
+  position: relative;
+}
+
+.notion-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 1px;
+  height: 100%;
+  background: hsl(var(--border));
+  transform: translateX(1px) rotate(0.5deg);
+}
+
+.notion-content {
+  background: hsl(var(--background));
+  min-height: 100vh;
+}
+
+/* Math rendering with sketch style */
+.math-content {
+  font-family: "Courier New", "Consolas", "Liberation Mono", monospace;
+  line-height: 1.6;
+}
+
+.math-content .fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.math-content .numerator {
+  border-bottom: 2px solid currentColor;
+  padding: 0 4px;
+  font-size: 0.9em;
+  position: relative;
+}
+
+.math-content .numerator::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(-0.5deg);
+}
+
+.math-content .denominator {
+  padding: 0 4px;
+  font-size: 0.9em;
+}
+
+.math-content .math-inline {
+  font-style: normal;
+  font-weight: 500;
+  background: hsl(var(--muted));
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid hsl(var(--border));
+}
+
+.math-content .math-display {
+  text-align: center;
+  margin: 12px 0;
+  font-size: 1.1em;
+  font-weight: 500;
+  background: hsl(var(--muted));
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  position: relative;
+}
+
+.math-content .math-display::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  transform: rotate(-0.3deg);
+  z-index: -1;
+}
+
+.math-content sup {
+  font-size: 0.75em;
+  vertical-align: super;
+}
+
+.math-content sub {
+  font-size: 0.75em;
+  vertical-align: sub;
+}
+
+/* Chat message styling - Updated */
+.chat-message-user {
+  @apply sketch-border;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: rotate(0.3deg);
+  font-family: "System UI", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: 400;
+}
+
+.chat-message-assistant {
+  @apply sketch-border;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  transform: rotate(-0.2deg);
+  font-family: "Courier New", "Monaco", "Consolas", "Liberation Mono", monospace;
+  font-weight: 400;
+}
+
+/* Input styling - Updated */
+.sketch-input {
+  @apply sketch-border;
+  background: hsl(var(--background));
+  font-family: "System UI", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: 400;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.sketch-input:focus {
+  outline: none;
+  transform: rotate(0deg);
+  box-shadow: 0 0 0 2px hsl(var(--ring)), 2px 2px 0px hsl(var(--sketch-shadow));
+}
+
+/* Navigation styling - Updated */
+.nav-item {
+  font-family: "System UI", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  background: hsl(var(--accent));
+  border-left: 3px solid hsl(var(--primary));
+  transform: translateX(2px);
+}
+
+/* Header styling */
+.app-header {
+  background: hsl(var(--background));
+  border-bottom: 2px solid hsl(var(--border));
+  position: relative;
+}
+
+.app-header::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: hsl(var(--border));
+  transform: rotate(-0.1deg);
+}
+
+/* Dashboard cards */
+.dashboard-card {
+  @apply sketch-card;
+  padding: 20px;
+  margin: 8px;
+}
+
+/* Dashboard stat - Keep monospace for precision */
+.dashboard-stat {
+  font-family: "Courier New", "Monaco", "Consolas", "Liberation Mono", monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  text-shadow: 1px 1px 0px hsl(var(--sketch-shadow));
+}
+
+/* Loading animation with sketch style */
+.sketch-loading {
+  border: 2px solid hsl(var(--muted));
+  border-top: 2px solid hsl(var(--primary));
+  border-radius: 50%;
+  animation: sketch-spin 1s linear infinite;
+}
+
+@keyframes sketch-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg) scale(1.05);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg) scale(0.95);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Button variants - Updated */
+.btn-sketch-primary {
+  @apply sketch-button;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-family: "System UI", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.btn-sketch-secondary {
+  @apply sketch-button;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  font-family: "Courier New", "Monaco", "Consolas", "Liberation Mono", monospace;
+  font-weight: 400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  body {
+    background-size: 15px 15px;
+  }
+
+  .sketch-shadow {
+    box-shadow: 2px 2px 0px hsl(var(--sketch-shadow)), 4px 4px 0px hsl(var(--sketch-shadow));
+  }
+}
+
+/* Print styles for that paper feel */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .sketch-border,
+  .sketch-card {
+    border: 1px solid #000;
+    box-shadow: none;
+    transform: none;
+  }
+}

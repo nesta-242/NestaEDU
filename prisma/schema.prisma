@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  passwordHash String
+  firstName   String?
+  lastName    String?
+  phone       String?
+  gradeLevel  String?
+  school      String?
+  avatar      String?  // base64 encoded
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  chatSessions ChatSession[]
+  examResults  ExamResult[]
+
+  @@map("users")
+}
+
+model ChatSession {
+  id           String   @id @default(cuid())
+  userId       String
+  subject      String
+  topic        String?
+  title        String?
+  lastMessage  String?
+  messageCount Int      @default(0)
+  messages     Json     // Store full conversation
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_sessions")
+}
+
+model ExamResult {
+  id             String   @id @default(cuid())
+  userId         String
+  subject        String
+  score          Int
+  maxScore       Int
+  percentage     Decimal  @db.Decimal(5, 2)
+  totalQuestions Int
+  timeSpent      Int?     // in minutes
+  answers        Json?    // Store user answers
+  feedback       String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("exam_results")
+}
