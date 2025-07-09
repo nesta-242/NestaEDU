@@ -1,12 +1,35 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText } from "ai"
-import { getOpenAIKey } from "../../../config/api-keys"
+import { getOpenAIKey, validateEnvironment } from "../../../config/api-keys"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
     const { messages, subject } = await req.json()
+
+    // Validate environment variables first
+    if (!validateEnvironment()) {
+      return new Response(
+        JSON.stringify({
+          error: "Configuration error",
+          message: "The AI tutoring service is not properly configured. Please check environment variables.",
+          isMock: true,
+          debug: {
+            environment: process.env.NODE_ENV,
+            hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+            hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+            hasJwtSecret: !!process.env.JWT_SECRET
+          }
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    }
 
     // Check if OpenAI API key is available and set it as environment variable
     const apiKey = getOpenAIKey()

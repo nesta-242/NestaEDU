@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
-import { getOpenAIKey } from "../../../config/api-keys"
+import { getOpenAIKey, validateEnvironment } from "../../../config/api-keys"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +9,26 @@ export async function POST(request: NextRequest) {
 
     if (!examData || !answers) {
       return NextResponse.json({ error: "Exam data and answers are required" }, { status: 400 })
+    }
+
+    // Validate environment variables first
+    if (!validateEnvironment()) {
+      return NextResponse.json(
+        {
+          error: "Configuration error",
+          message: "The exam grading service is not properly configured. Please check environment variables.",
+          isMock: true,
+          debug: {
+            environment: process.env.NODE_ENV,
+            hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+            hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+            hasJwtSecret: !!process.env.JWT_SECRET
+          }
+        },
+        { status: 500 },
+      )
     }
 
     // Check if OpenAI API key is available

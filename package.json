@@ -9,7 +9,9 @@
     "start": "next start",
     "setup": "npm install --legacy-peer-deps && echo 'Setup complete! Run npm run dev to start the development server.'",
     "clean": "rm -rf .next node_modules && npm install --legacy-peer-deps",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "generate-jwt": "node scripts/generate-jwt-secret.js",
+    "check-env": "node scripts/check-env.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -51,6 +53,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.1.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "jose": "^6.0.11",
