@@ -13,13 +13,26 @@ export async function POST(request: NextRequest) {
 
     // Check if OpenAI API key is available
     const apiKey = getOpenAIKey()
+    console.log('Exam generation - API key check:', {
+      hasKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      envVars: {
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        openAIKeyLength: process.env.OPENAI_API_KEY?.length || 0
+      }
+    })
+    
     if (!apiKey) {
       console.error("OpenAI API key not found")
       return NextResponse.json(
         {
           error: "OpenAI API key not configured",
           isMock: true,
-          mockMessage: "Using mock exam - OpenAI API key not available",
+          mockMessage: "Using mock exam - OpenAI API key not available. Please check environment variables.",
+          debug: {
+            hasEnvVar: !!process.env.OPENAI_API_KEY,
+            envVarLength: process.env.OPENAI_API_KEY?.length || 0
+          }
         },
         { status: 500 },
       )

@@ -10,13 +10,26 @@ export async function POST(req: Request) {
 
     // Check if OpenAI API key is available and set it as environment variable
     const apiKey = getOpenAIKey()
+    console.log('Chat - API key check:', {
+      hasKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      envVars: {
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        openAIKeyLength: process.env.OPENAI_API_KEY?.length || 0
+      }
+    })
+    
     if (!apiKey) {
       console.error("OpenAI API key not found")
       return new Response(
         JSON.stringify({
           error: "AI service configuration error",
-          message: "I apologize, but the AI tutoring service is not properly configured. Please contact support.",
+          message: "I apologize, but the AI tutoring service is not properly configured. Please check environment variables.",
           isMock: true,
+          debug: {
+            hasEnvVar: !!process.env.OPENAI_API_KEY,
+            envVarLength: process.env.OPENAI_API_KEY?.length || 0
+          }
         }),
         {
           status: 200,

@@ -21,7 +21,13 @@ export const API_CONFIG = {
 
 // Helper function to get API key with fallback
 export function getOpenAIKey() {
-  return process.env.OPENAI_API_KEY
+  const key = process.env.OPENAI_API_KEY
+  console.log('OpenAI API Key check:', {
+    hasKey: !!key,
+    keyLength: key?.length || 0,
+    keyPrefix: key?.substring(0, 10) + '...' || 'none'
+  })
+  return key
 }
 
 // Helper function to get Supabase service role key
