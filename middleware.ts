@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { verifyToken } from '@/lib/jwt-auth'
 
 // Simple JWT verification without database access (for Edge Runtime)
 export async function middleware(request: NextRequest) {

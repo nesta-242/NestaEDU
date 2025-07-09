@@ -13,14 +13,7 @@ export interface UserData {
   avatar?: string
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12)
-}
-
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword)
-}
-
+// JWT functions - safe for Edge Runtime
 export async function generateToken(user: UserData): Promise<string> {
   const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
   return await new SignJWT({ id: user.id, email: user.email })
@@ -33,12 +26,22 @@ export async function verifyToken(token: string): Promise<UserData | null> {
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
     const { payload } = await jwtVerify(token, secret)
-    return payload as UserData
+    return payload as unknown as UserData
   } catch (error) {
     return null
   }
 }
 
+// Password functions - Node.js only (use in API routes with runtime = 'nodejs')
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12)
+}
+
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword)
+}
+
+// Database functions - Node.js only
 export async function createUser(email: string, password: string, userData: Partial<UserData> = {}): Promise<UserData> {
   try {
     const hashedPassword = await hashPassword(password)

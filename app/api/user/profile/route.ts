@@ -1,29 +1,30 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { verifyToken } from '@/lib/auth'
+import { verifyToken } from '@/lib/jwt-auth'
 import { API_CONFIG } from '../../../../config/api-keys'
 
-// Get Supabase configuration with fallbacks
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+// Create Supabase client function to handle runtime configuration
+function createSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
 
-// Validate configuration
-if (!supabaseUrl || supabaseUrl === 'your-supabase-url') {
-  throw new Error('Supabase URL not configured')
+  // Validate configuration at runtime
+  if (!supabaseUrl || supabaseUrl === 'your-supabase-url') {
+    throw new Error('Supabase URL not configured')
+  }
+
+  if (!supabaseServiceKey || supabaseServiceKey === 'your-supabase-service-role-key') {
+    throw new Error('Supabase service role key not configured')
+  }
+
+  // Log configuration for debugging (remove in production)
+  console.log('Supabase URL:', supabaseUrl)
+  console.log('Service role key length:', supabaseServiceKey?.length || 0)
+  console.log('Service role key starts with:', supabaseServiceKey?.substring(0, 20) + '...')
+
+  return createClient(supabaseUrl, supabaseServiceKey)
 }
-
-if (!supabaseServiceKey || supabaseServiceKey === 'your-supabase-service-role-key') {
-  throw new Error('Supabase service role key not configured')
-}
-
-// Create Supabase client with service role key to bypass RLS
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-// Log configuration for debugging (remove in production)
-console.log('Supabase URL:', supabaseUrl)
-console.log('Service role key length:', supabaseServiceKey?.length || 0)
-console.log('Service role key starts with:', supabaseServiceKey?.substring(0, 20) + '...')
 
 // GET - Retrieve user profile
 export async function GET(request: NextRequest) {
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching profile for user ID:', userId)
 
+    const supabase = createSupabaseClient()
     const { data: profile, error } = await supabase
       .from('users')
       .select('id, email, first_name, last_name, phone, grade_level, school, avatar')
@@ -85,6 +87,7 @@ export async function PUT(request: NextRequest) {
 
     console.log('Updating profile for user:', userId, 'with avatar:', !!avatar)
 
+    const supabase = createSupabaseClient()
     const { data: updatedProfile, error } = await supabase
       .from('users')
       .update({

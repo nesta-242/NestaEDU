@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
+import { verifyToken } from '@/lib/jwt-auth'
 
 // Get user ID from request headers (set by middleware)
 function getUserId(request: NextRequest): string | null {
