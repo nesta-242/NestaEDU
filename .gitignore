@@ -20,7 +20,7 @@ yarn-error.log*
 .env*
 
 # API keys and sensitive config
-config/api-keys.js
+# config/api-keys.js - removed to allow deployment
 
 # vercel
 .vercel
