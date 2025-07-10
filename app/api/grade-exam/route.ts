@@ -49,8 +49,6 @@ export async function POST(request: NextRequest) {
     process.env.OPENAI_API_KEY = apiKey
 
     try {
-      console.log("Grading exam with OpenAI...")
-
       const prompt = `Grade this exam and provide detailed feedback for each question.
 
 EXAM DETAILS:
@@ -108,8 +106,6 @@ Grade the exam now:`
         maxTokens: 4000,
       })
 
-      console.log("OpenAI grading response received, parsing JSON...")
-
       // Clean the response to ensure it's valid JSON
       let cleanedText = text.trim()
       if (cleanedText.startsWith("```json")) {
@@ -126,7 +122,6 @@ Grade the exam now:`
         throw new Error("Invalid grading structure - missing questionResults array")
       }
 
-      console.log("Exam graded successfully")
       return NextResponse.json(gradingResults)
     } catch (aiError) {
       console.error("OpenAI grading failed:", aiError)

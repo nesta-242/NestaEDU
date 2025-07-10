@@ -21,7 +21,7 @@ export function MobileNav() {
       current: pathname === "/student/dashboard",
     },
     {
-      name: "AI Tutor",
+      name: "Personalized AI Tutor",
       href: "/student/tutor",
       icon: MessageSquare,
       current: pathname === "/student/tutor",
@@ -58,7 +58,7 @@ export function MobileNav() {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-2 px-2 py-4">
-            <ExamSafeLink href="/" className="flex items-center gap-2">
+            <ExamSafeLink href="/student/dashboard" className="flex items-center gap-2">
               <PenTool className="h-6 w-6 text-primary" />
               <span className="font-bold text-lg">Nesta Education</span>
             </ExamSafeLink>

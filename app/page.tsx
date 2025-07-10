@@ -21,7 +21,7 @@ export default function Home() {
           </div>
 
           <p className="text-base text-muted-foreground font-notebook max-w-2xl">
-            AI-powered education platform aligned to BJC&nbsp;&amp;&nbsp;BGCSE Math and Science curriculum.
+            An AI-powered education platform aligned to BJC&nbsp;&amp;&nbsp;BGCSE Math and Science curriculum.
           </p>
         </header>
 

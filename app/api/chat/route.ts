@@ -33,14 +33,6 @@ export async function POST(req: Request) {
 
     // Check if OpenAI API key is available and set it as environment variable
     const apiKey = getOpenAIKey()
-    console.log('Chat - API key check:', {
-      hasKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      envVars: {
-        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-        openAIKeyLength: process.env.OPENAI_API_KEY?.length || 0
-      }
-    })
     
     if (!apiKey) {
       console.error("OpenAI API key not found")

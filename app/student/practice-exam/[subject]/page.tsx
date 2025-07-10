@@ -79,6 +79,32 @@ export default function ExamPage() {
   const [showMathKeyboard, setShowMathKeyboard] = useState(false)
   const [showCalculator, setShowCalculator] = useState(false)
   const [activeTextArea, setActiveTextArea] = useState<HTMLTextAreaElement | null>(null)
+  // Add state for user first name
+  const [firstName, setFirstName] = useState<string>("Student")
+
+  // Load user first name from API or localStorage
+  useEffect(() => {
+    const fetchFirstName = async () => {
+      try {
+        const res = await fetch('/api/user/profile')
+        if (res.ok) {
+          const user = await res.json()
+          if (user.firstName) {
+            setFirstName(user.firstName)
+            localStorage.setItem('userFirstName', user.firstName)
+            return
+          }
+        }
+        // fallback to localStorage if API fails
+        const saved = localStorage.getItem('userFirstName')
+        if (saved) setFirstName(saved)
+      } catch {
+        const saved = localStorage.getItem('userFirstName')
+        if (saved) setFirstName(saved)
+      }
+    }
+    fetchFirstName()
+  }, [])
 
   useEffect(() => {
     generateExam()
@@ -209,13 +235,12 @@ export default function ExamPage() {
     const progressInterval = setInterval(() => {
       setLoadingProgress((prev) => {
         if (prev >= 90) return prev // Stop at 90% until actual completion
-        return prev + Math.random() * 15 + 5 // Increment by 5-20%
+        const increment = Math.random() * 15 + 5 // Increment by 5-20%
+        return Math.min(prev + increment, 90) // Ensure we don't exceed 90%
       })
     }, 300)
 
     try {
-      console.log("Generating exam for subject:", subject)
-
       const response = await fetch("/api/generate-exam", {
         method: "POST",
         headers: {
@@ -231,7 +256,6 @@ export default function ExamPage() {
       }
 
       const data = await response.json()
-      console.log("Exam data received:", data)
 
       if (data.error) {
         throw new Error(data.error)
@@ -307,6 +331,15 @@ export default function ExamPage() {
     setActiveTextArea(event.target)
   }
 
+  const handleCalculatorFocusChange = (hasFocus: boolean) => {
+    if (!hasFocus && activeTextArea) {
+      // When calculator is closed or loses focus, focus the last active textarea
+      setTimeout(() => {
+        activeTextArea?.focus()
+      }, 100)
+    }
+  }
+
   const handleSubmitExam = async () => {
     if (!examData) return
 
@@ -324,8 +357,6 @@ export default function ExamPage() {
     setIsSubmitting(true)
 
     try {
-      console.log("Submitting exam for grading...")
-
       const response = await fetch("/api/grade-exam", {
         method: "POST",
         headers: {
@@ -342,7 +373,6 @@ export default function ExamPage() {
       }
 
       const results = await response.json()
-      console.log("Grading results received:", results)
 
       if (results.error) {
         throw new Error(results.error)
@@ -366,23 +396,35 @@ export default function ExamPage() {
         })
       }
 
-      // Save results to localStorage for dashboard
+      // Save results to database
       const examResult = {
-        id: `exam_${Date.now()}`,
         subject: getExamInfo().title,
         score: results.totalScore,
         maxScore: results.maxScore,
         percentage: results.percentage,
         totalQuestions: examData.questions.length,
         timeSpent: Math.round((getExamInfo().timeLimit * 60 - timeRemaining) / 60),
-        date: new Date().toISOString(),
+        answers: {
+          userAnswers: answers,
+          questionResults: results.questionResults,
+          examData: examData
+        },
+        feedback: results.feedback,
       }
 
-      const savedResults = JSON.parse(localStorage.getItem("examResults") || "[]")
-      savedResults.unshift(examResult) // Add to beginning for most recent first
-      localStorage.setItem("examResults", JSON.stringify(savedResults.slice(0, 20))) // Keep only last 20 results
+      const saveResponse = await fetch('/api/exam-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(examResult),
+      })
 
-      console.log("Saved exam result to localStorage:", examResult)
+      if (saveResponse.ok) {
+        console.log("Saved exam result to database")
+      } else {
+        console.error("Failed to save exam result to database")
+      }
     } catch (error) {
       console.error("Error grading exam:", error)
       toast({
@@ -570,6 +612,24 @@ export default function ExamPage() {
   }
 
   if (showResults && examResults) {
+    // Personalize the feedback by addressing the student directly
+    // Replace generic feedback with a message to the student
+    let personalizedFeedback = examResults.feedback
+    if (personalizedFeedback) {
+      // Try to replace generic phrases with direct address
+      personalizedFeedback = personalizedFeedback
+        .replace(/\bThe student\b/gi, firstName)
+        .replace(/\bthe student\b/gi, firstName)
+        .replace(/\bStudent\b/gi, firstName)
+        .replace(/\bstudent\b/gi, firstName)
+        .replace(/\bTheir\b/gi, "Your")
+        .replace(/\btheir\b/gi, "your")
+        .replace(/\bThey\b/gi, "You")
+        .replace(/\bthey\b/gi, "you")
+        .replace(/\bYour performance\b/gi, `${firstName}, your performance`)
+        .replace(/\bOverall,\b/gi, `${firstName},`)
+        .replace(/^You /, `${firstName}, you `)
+    }
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
@@ -614,7 +674,7 @@ export default function ExamPage() {
                       ? "Satisfactory"
                       : "Needs Improvement"}
               </Badge>
-              <p className="text-muted-foreground mt-4">{examResults.feedback}</p>
+              <p className="text-muted-foreground mt-4">{personalizedFeedback}</p>
             </div>
           </CardContent>
         </Card>
@@ -658,13 +718,13 @@ export default function ExamPage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-4">
-          <Button onClick={generateExam} variant="outline">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+          <Button onClick={generateExam} variant="outline" className="w-full sm:w-auto">
             <RefreshCw className="mr-2 h-4 w-4" />
             Take Another {examInfo.title} Exam
           </Button>
-          <Button onClick={() => router.push("/student/practice-exam")}>Choose Different Exam</Button>
-          <Button onClick={() => router.push("/student/dashboard")}>Return to Dashboard</Button>
+          <Button onClick={() => router.push("/student/practice-exam")} className="w-full sm:w-auto">Choose Different Exam</Button>
+          <Button onClick={() => router.push("/student/dashboard")} className="w-full sm:w-auto">Return to Dashboard</Button>
         </div>
       </div>
     )
@@ -675,19 +735,19 @@ export default function ExamPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header with progress */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{examInfo.title}</h1>
           <p className="text-muted-foreground">
             Question {currentQuestion + 1} of {examData.questions.length}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-lg font-mono">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex items-center justify-center gap-2 text-lg font-mono bg-muted/50 rounded-lg px-3 py-2 sm:bg-transparent sm:px-0 sm:py-0">
             <Clock className="h-5 w-5" />
             <span className={timeRemaining < 300 ? "text-red-600" : ""}>{formatTime(timeRemaining)}</span>
           </div>
-          <Button onClick={generateExam} variant="outline" size="sm">
+          <Button onClick={generateExam} variant="outline" size="sm" className="w-full sm:w-auto">
             <RefreshCw className="mr-2 h-4 w-4" />
             New Questions
           </Button>
@@ -877,7 +937,7 @@ export default function ExamPage() {
         <MathKeyboard onInsert={handleMathSymbolInsert} onClose={() => setShowMathKeyboard(false)} />
       )}
 
-      {showCalculator && <Calculator onClose={() => setShowCalculator(false)} />}
+      {showCalculator && <Calculator onClose={() => setShowCalculator(false)} onFocusChange={handleCalculatorFocusChange} />}
     </div>
   )
 }

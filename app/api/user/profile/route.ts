@@ -35,8 +35,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('Fetching profile for user ID:', userId)
-
     const supabase = createSupabaseClient()
     const { data: profile, error } = await supabase
       .from('users')
@@ -52,8 +50,6 @@ export async function GET(request: NextRequest) {
     if (!profile) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    console.log('Profile fetched successfully:', { id: profile.id, hasAvatar: !!profile.avatar })
 
     return NextResponse.json({
       id: profile.id,
@@ -85,8 +81,6 @@ export async function PUT(request: NextRequest) {
 
     const { firstName, lastName, phone, gradeLevel, school, avatar } = await request.json()
 
-    console.log('Updating profile for user:', userId, 'with avatar:', !!avatar)
-
     const supabase = createSupabaseClient()
     const { data: updatedProfile, error } = await supabase
       .from('users')
@@ -110,8 +104,6 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       )
     }
-
-    console.log('Profile updated successfully:', { id: updatedProfile.id, hasAvatar: !!updatedProfile.avatar })
 
     return NextResponse.json({
       id: updatedProfile.id,

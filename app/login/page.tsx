@@ -53,12 +53,9 @@ export default function LoginPage() {
       // Save user profile data
       localStorage.setItem("userProfile", JSON.stringify(data.user))
 
-      // Debug log before redirect
-      console.log("Login successful, redirecting to dashboard...");
       // Redirect to student dashboard
       router.push("/student/dashboard")
     } catch (error: any) {
-      console.error('Login error:', error)
       setError(error.message || "Invalid email or password")
     } finally {
       setIsLoading(false)
@@ -69,12 +66,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <PenTool className="w-12 h-12 text-primary" />
+              <PenTool className="w-8 h-8 text-primary" />
+            </Link>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <span className="text-2xl font-bold">Nesta Education</span>
             </Link>
           </div>
-          <CardTitle className="text-2xl font-bold">Nesta Education</CardTitle>
+          <CardTitle className="text-2xl">Sign In</CardTitle>
           <CardDescription>Welcome back! Please sign in below.</CardDescription>
         </CardHeader>
         <CardContent>

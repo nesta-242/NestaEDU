@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Clock, X, Trash2 } from "lucide-react"
 import Link from "next/link"
@@ -62,91 +61,93 @@ export default function SubjectsPage() {
     }
   }, [])
 
-  const loadChatHistory = () => {
+  const loadChatHistory = async () => {
     try {
-      const stored = localStorage.getItem("chatHistory")
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        const sessions = parsed.map((session: any) => ({
-          ...session,
-          timestamp: new Date(session.timestamp),
+      const response = await fetch('/api/chat-sessions')
+      if (response.ok) {
+        const sessions = await response.json()
+        const chatHistory = sessions.map((session: any) => ({
+          id: session.id,
+          subject: session.subject,
+          topic: session.topic || '',
+          title: session.title || 'Conversation',
+          lastMessage: session.lastMessage || '',
+          timestamp: new Date(session.updatedAt),
+          messageCount: session.messageCount || 0,
         }))
-        setChatHistory(sessions)
+        setChatHistory(chatHistory)
       } else {
-        // Create some sample data for demonstration with original questions as titles
-        const sampleSessions: ChatSession[] = [
-          {
-            id: "1",
-            subject: "math",
-            topic: "algebra",
-            title: "Solve for x: 2x + 5 = 13",
-            lastMessage: "Great! You've mastered the concept of isolating variables.",
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-            messageCount: 12,
-          },
-          {
-            id: "2",
-            subject: "math",
-            topic: "geometry",
-            title: "Find the area of a triangle with base 8cm and height 6cm",
-            lastMessage: "Let's explore what happens when we have an isosceles triangle...",
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-            messageCount: 8,
-          },
-          {
-            id: "3",
-            subject: "science",
-            topic: "biology",
-            title: "What is the difference between plant and animal cells?",
-            lastMessage: "Can you tell me the difference between plant and animal cells?",
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-            messageCount: 15,
-          },
-          {
-            id: "4",
-            subject: "math",
-            topic: "trigonometry",
-            title: "Calculate sin(30°) and cos(45°)",
-            lastMessage: "Remember, sine is opposite over hypotenuse...",
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
-            messageCount: 6,
-          },
-        ]
-        setChatHistory(sampleSessions)
-        localStorage.setItem("chatHistory", JSON.stringify(sampleSessions))
+        console.error('Failed to fetch chat sessions:', response.status)
+        setChatHistory([])
       }
     } catch (error) {
-      console.error("Failed to load or parse chat history:", error)
+      console.error("Failed to load chat history:", error)
       toast({
         title: "Error loading history",
-        description: "Could not load chat history. It might be corrupted.",
+        description: "Could not load chat history. Please try again.",
         variant: "destructive",
       })
-      localStorage.removeItem("chatHistory") // Clear corrupted data
+      setChatHistory([])
     }
   }
 
-  const clearAllHistory = () => {
-    setChatHistory([])
-    localStorage.removeItem("chatHistory")
-    toast({
-      title: "History cleared",
-      description: "All conversation history has been deleted.",
-    })
+  const clearAllHistory = async () => {
+    try {
+      // Delete all chat sessions for the user
+      const response = await fetch('/api/chat-sessions', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clearAll: true }),
+      })
+
+      if (response.ok) {
+        setChatHistory([])
+        toast({
+          title: "History cleared",
+          description: "All conversation history has been deleted.",
+        })
+      } else {
+        throw new Error('Failed to clear history')
+      }
+    } catch (error) {
+      console.error('Error clearing history:', error)
+      toast({
+        title: "Error",
+        description: "Failed to clear history. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const deleteSession = (sessionId: string, event: React.MouseEvent) => {
+  const deleteSession = async (sessionId: string, event: React.MouseEvent) => {
     // Prevent the card click event from firing
     event.stopPropagation()
 
-    const updatedHistory = chatHistory.filter((session) => session.id !== sessionId)
-    setChatHistory(updatedHistory)
-    localStorage.setItem("chatHistory", JSON.stringify(updatedHistory))
+    try {
+      const response = await fetch(`/api/chat-sessions?id=${sessionId}`, {
+        method: 'DELETE',
+      })
 
-    toast({
-      title: "Conversation deleted",
-      description: "The conversation has been removed from your history.",
-    })
+      if (response.ok) {
+        const updatedHistory = chatHistory.filter((session) => session.id !== sessionId)
+        setChatHistory(updatedHistory)
+        toast({
+          title: "Conversation deleted",
+          description: "The conversation has been removed from your history.",
+        })
+      } else {
+        throw new Error('Failed to delete session')
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete conversation. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const getSessionsBySubject = (subject: string) => {
@@ -459,31 +460,39 @@ export default function SubjectsPage() {
         </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="math" className="flex items-center gap-2">
+      <div className="space-y-6">
+        {/* Subject Selection Buttons */}
+        <div className="grid grid-cols-3 gap-3">
+          <Button
+            variant={activeTab === "math" ? "default" : "outline"}
+            onClick={() => setActiveTab("math")}
+            className="flex items-center gap-2 px-6 py-3"
+          >
             📐 Mathematics
-          </TabsTrigger>
-          <TabsTrigger value="science" className="flex items-center gap-2">
+          </Button>
+          <Button
+            variant={activeTab === "science" ? "default" : "outline"}
+            onClick={() => setActiveTab("science")}
+            className="flex items-center gap-2 px-6 py-3"
+          >
             🔬 Science
-          </TabsTrigger>
-          <TabsTrigger value="general" className="flex items-center gap-2">
+          </Button>
+          <Button
+            variant={activeTab === "general" ? "default" : "outline"}
+            onClick={() => setActiveTab("general")}
+            className="flex items-center gap-2 px-6 py-3"
+          >
             📚 General
-          </TabsTrigger>
-        </TabsList>
+          </Button>
+        </div>
 
-        <TabsContent value="math" className="mt-6">
-          <SubjectContent subject="math" />
-        </TabsContent>
-
-        <TabsContent value="science" className="mt-6">
-          <SubjectContent subject="science" />
-        </TabsContent>
-
-        <TabsContent value="general" className="mt-6">
-          <SubjectContent subject="general" />
-        </TabsContent>
-      </Tabs>
+        {/* Content based on active tab */}
+        <div className="mt-6">
+          {activeTab === "math" && <SubjectContent subject="math" />}
+          {activeTab === "science" && <SubjectContent subject="science" />}
+          {activeTab === "general" && <SubjectContent subject="general" />}
+        </div>
+      </div>
 
       {/* Quick Start Section */}
       <Card>

@@ -32,6 +32,7 @@ interface ChatSession {
   subject: string
   topic: string
   title: string
+  lastMessage: string
   timestamp: string
   messageCount: number
 }
@@ -61,7 +62,6 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  console.log("DashboardPage mounted");
   const [stats, setStats] = useState<DashboardStats & { examsThisWeek: number; sessionsThisWeek: number; weeklyChatActivity: number[]; weeklyExamActivity: number[] }>(
     {
       learningSessions: 0,
@@ -86,8 +86,55 @@ export default function DashboardPage() {
   const [showAllExams, setShowAllExams] = useState(false)
   const router = useRouter()
 
+  // Helper function to get the current week's date range (Sunday to Saturday)
+  const getCurrentWeekRange = () => {
+    const now = new Date()
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - now.getDay()) // Sunday
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday
+    endOfWeek.setHours(23, 59, 59, 999)
+    
+    return { startOfWeek, endOfWeek }
+  }
+
+  // Helper function to format date range for display
+  const getWeekRangeDisplay = () => {
+    const { startOfWeek, endOfWeek } = getCurrentWeekRange()
+    const formatDate = (date: Date) => {
+      const month = date.toLocaleDateString('en-US', { month: 'long' })
+      const day = date.getDate()
+      const suffix = getDaySuffix(day)
+      return `${month} ${day}${suffix}`
+    }
+    return `(${formatDate(startOfWeek)} to ${formatDate(endOfWeek)})`
+  }
+
+  // Helper function to get day suffix (1st, 2nd, 3rd, etc.)
+  const getDaySuffix = (day: number) => {
+    if (day >= 11 && day <= 13) return 'th'
+    switch (day % 10) {
+      case 1: return 'st'
+      case 2: return 'nd'
+      case 3: return 'rd'
+      default: return 'th'
+    }
+  }
+
+  // Helper function to get day of week index (0 = Sunday, 6 = Saturday)
+  const getDayOfWeekIndex = (date: Date) => {
+    return date.getDay()
+  }
+
+  // Helper function to check if a date is within the current week
+  const isDateInCurrentWeek = (date: Date) => {
+    const { startOfWeek, endOfWeek } = getCurrentWeekRange()
+    return date >= startOfWeek && date <= endOfWeek
+  }
+
   useEffect(() => {
-    console.log("Dashboard useEffect running");
     const fetchUser = async () => {
       const res = await fetch('/api/auth/me')
       if (res.status === 401) {
@@ -97,13 +144,40 @@ export default function DashboardPage() {
       const data = await res.json()
       setUserProfile(data.user)
 
-      // Load dashboard data (chatHistory, examResults) from localStorage
+      // Fetch dashboard data from database APIs
       try {
-        let chatHistory: ChatSession[] = JSON.parse(localStorage.getItem("chatHistory") || "[]")
-        let examResults: ExamResult[] = JSON.parse(localStorage.getItem("examResults") || "[]")
+        // Fetch chat sessions from database
+        const chatRes = await fetch('/api/chat-sessions')
+        let chatHistory: ChatSession[] = []
+        if (chatRes.ok) {
+          const sessions = await chatRes.json()
+          chatHistory = sessions.map((session: any) => ({
+            id: session.id,
+            subject: session.subject,
+            topic: session.topic || '',
+            title: session.title || 'Conversation',
+            lastMessage: session.lastMessage || '',
+            timestamp: session.updatedAt,
+            messageCount: session.messageCount || 0,
+          }))
+        }
 
-        if (!Array.isArray(chatHistory)) chatHistory = []
-        if (!Array.isArray(examResults)) examResults = []
+        // Fetch exam results from database
+        const examRes = await fetch('/api/exam-results')
+        let examResults: ExamResult[] = []
+        if (examRes.ok) {
+          const results = await examRes.json()
+          examResults = results.map((result: any) => ({
+            id: result.id,
+            subject: result.subject,
+            score: result.score,
+            maxScore: result.maxScore,
+            percentage: result.percentage,
+            totalQuestions: result.totalQuestions,
+            timeSpent: result.timeSpent || 0,
+            date: result.createdAt,
+          }))
+        }
 
         const learningSessions = chatHistory.length
         const uniqueTopics = new Set(chatHistory.map((session) => `${session.subject}-${session.topic}`))
@@ -116,28 +190,38 @@ export default function DashboardPage() {
           examResults.length > 0
             ? Math.round(examResults.reduce((sum, exam) => sum + exam.percentage, 0) / examResults.length)
             : 0
-        // Calculate weekly activity for chat sessions and exams
+
+        // Calculate weekly activity for current week (Sunday to Saturday)
         const weeklyChatActivity = Array(7).fill(0)
         const weeklyExamActivity = Array(7).fill(0)
-        const now = new Date()
+        const { startOfWeek, endOfWeek } = getCurrentWeekRange()
+
+        // Process chat sessions for current week
         chatHistory.forEach((session) => {
           try {
             const sessionDate = new Date(session.timestamp)
-            const daysDiff = Math.floor((now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
-            if (daysDiff < 7 && daysDiff >= 0) {
-              weeklyChatActivity[6 - daysDiff]++
+            if (isDateInCurrentWeek(sessionDate)) {
+              const dayIndex = getDayOfWeekIndex(sessionDate)
+              weeklyChatActivity[dayIndex]++
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error('Error processing chat session date:', e)
+          }
         })
+
+        // Process exam results for current week
         examResults.forEach((exam) => {
           try {
             const examDate = new Date(exam.date)
-            const daysDiff = Math.floor((now.getTime() - examDate.getTime()) / (1000 * 60 * 60 * 24))
-            if (daysDiff < 7 && daysDiff >= 0) {
-              weeklyExamActivity[6 - daysDiff]++
+            if (isDateInCurrentWeek(examDate)) {
+              const dayIndex = getDayOfWeekIndex(examDate)
+              weeklyExamActivity[dayIndex]++
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error('Error processing exam date:', e)
+          }
         })
+
         const subjectCount: { [key: string]: number } = {}
         chatHistory.forEach((session) => {
           if (session.subject) {
@@ -148,6 +232,7 @@ export default function DashboardPage() {
           subject,
           count,
         }))
+        
         // Collect all unique days with activity (chat session or exam)
         const activityDates = new Set<string>()
         chatHistory.forEach((session) => {
@@ -164,34 +249,26 @@ export default function DashboardPage() {
         })
         let currentStreak = 0
         let lastSessionDate = null
-        if (activityDates.size > 0) {
-          // Find the most recent activity date
-          const sortedDates = Array.from(activityDates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-          lastSessionDate = sortedDates[0]
-          // Start from today, count back consecutive days with activity, but only if today has activity
-          let streakDate = new Date()
-          let firstDay = true
-          while (true) {
-            const dayStr = streakDate.toISOString().slice(0, 10)
-            if (activityDates.has(dayStr)) {
-              // Only count today if there is activity today
-              currentStreak++
-              streakDate.setDate(streakDate.getDate() - 1)
-              firstDay = false
-            } else {
-              // If it's the first day (today) and no activity, don't start a streak
-              if (firstDay) {
-                break
-              } else {
-                // For previous days, break the streak if no activity
-                break
-              }
+        const sortedDates = Array.from(activityDates).sort().reverse()
+        for (let i = 0; i < sortedDates.length; i++) {
+          const currentDate = new Date(sortedDates[i])
+          const expectedDate = new Date()
+          expectedDate.setDate(expectedDate.getDate() - i)
+          expectedDate.setHours(0, 0, 0, 0)
+          
+          if (currentDate.toISOString().slice(0, 10) === expectedDate.toISOString().slice(0, 10)) {
+            currentStreak++
+            if (i === 0) {
+              lastSessionDate = sortedDates[i]
             }
+          } else {
+            break
           }
         }
         let improvementTrend: 'up' | 'down' | 'stable' = 'stable'
         if (chatHistory.length >= 4) {
           try {
+            const now = new Date()
             const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
             const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)
             const recentSessions = chatHistory.filter(session => {
@@ -213,27 +290,27 @@ export default function DashboardPage() {
             else if (recentSessions < previousSessions) improvementTrend = 'down'
           } catch (e) {}
         }
+        
         // Calculate number of practice exams taken this week
-        const startOfWeek = new Date()
-        startOfWeek.setHours(0, 0, 0, 0)
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()) // Sunday as start
         const examsThisWeek = examResults.filter(exam => {
           try {
             const d = new Date(exam.date)
-            return d >= startOfWeek
+            return isDateInCurrentWeek(d)
           } catch {
             return false
           }
         }).length
+        
         // Calculate number of chat sessions this week
         const sessionsThisWeek = chatHistory.filter(session => {
           try {
             const d = new Date(session.timestamp)
-            return d >= startOfWeek
+            return isDateInCurrentWeek(d)
           } catch {
             return false
           }
         }).length
+        
         setStats({
           learningSessions,
           topicsExplored,
@@ -252,6 +329,7 @@ export default function DashboardPage() {
           sessionsThisWeek,
         })
       } catch (error) {
+        console.error('Error fetching dashboard data:', error)
         setStats({
           learningSessions: 0,
           topicsExplored: 0,
@@ -373,93 +451,85 @@ export default function DashboardPage() {
       </Card>
 
       {/* Key Metrics - Focused on Learning Momentum */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-green-500">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
             <Zap className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.currentStreak}</div>
-            <p className="text-xs text-muted-foreground">days of learning</p>
+            <div className="text-2xl font-bold">{stats.currentStreak}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.currentStreak === 0 ? "Start today!" : "days in a row"}
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Learning Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">This Week</CardTitle>
             <Calendar className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.sessionsThisWeek}</div>
-            <p className="text-xs text-muted-foreground">this week</p>
+            <div className="text-2xl font-bold">{stats.sessionsThisWeek + stats.examsThisWeek}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.sessionsThisWeek} sessions, {stats.examsThisWeek} exams
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Practice Exams</CardTitle>
-            <Award className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <MessageSquare className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.examsThisWeek}</div>
-            <p className="text-xs text-muted-foreground">taken this week</p>
+            <div className="text-2xl font-bold">{stats.learningSessions}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.topicsExplored} topics explored
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
+        <Card className="border-l-4 border-l-orange-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Exam Average</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
             <Target className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.averageScore}%</div>
+            <div className="text-2xl font-bold">{stats.averageScore}%</div>
             <p className="text-xs text-muted-foreground">
-              {stats.practiceExams > 0 ? `${stats.practiceExams} exams taken` : 'No exams yet'}
+              {stats.practiceExams} exams taken
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Continue Learning Section */}
+      {/* Learning Insights Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
-            Continue Learning
-          </CardTitle>
-          <CardDescription>
-            {getDaysSinceLastSession() === null 
-              ? "Start your learning journey with the AI tutor" 
-              : getDaysSinceLastSession() === 0 
-                ? "You learned today! Keep the momentum going" 
-                : `It's been ${getDaysSinceLastSession()} day${getDaysSinceLastSession() === 1 ? '' : 's'} since your last session`
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+        <CardContent className="p-6">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-3">
-              <h4 className="font-medium">Quick Start Options</h4>
-              <div className="space-y-2">
-                <Link href="/student/tutor?subject=math">
-                  <Button variant="outline" className="w-full justify-start">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Math Practice
-                  </Button>
-                </Link>
-                <Link href="/student/tutor?subject=science">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Lightbulb className="h-4 w-4 mr-2" />
-                    Science Concepts
-                  </Button>
-                </Link>
-                <Link href="/student/practice-exam">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Award className="h-4 w-4 mr-2" />
-                    Practice Exam
-                  </Button>
-                </Link>
+              <h4 className="font-medium">Quick Stats</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>Learning Sessions</span>
+                  <span className="font-medium">{stats.learningSessions}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Practice Exams</span>
+                  <span className="font-medium">{stats.practiceExams}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Topics Explored</span>
+                  <span className="font-medium">{stats.topicsExplored}</span>
+                </div>
+                {getDaysSinceLastSession() !== null && (
+                  <div className="flex items-center justify-between">
+                    <span>Days Since Last Session</span>
+                    <span className="font-medium">{getDaysSinceLastSession()}</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -521,7 +591,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {stats.recentSessions.map((session) => (
                   <Link key={session.id} href={`/student/tutor?resume=${session.id}`}>
-                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group">
+                    <div className="flex items-center justify-between p-4 md:p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group active:bg-muted active:scale-98">
                       <div className="flex-1">
                         <p className="font-medium text-sm group-hover:text-primary transition-colors">{session.title}</p>
                         <div className="flex items-center gap-2 mt-1">
@@ -622,7 +692,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Weekly Activity
+            Weekly Activity {getWeekRangeDisplay()}
           </CardTitle>
           <CardDescription>
             <span className="inline-block w-3 h-3 bg-blue-500 rounded mr-1 align-middle"></span> Learning Sessions
@@ -631,7 +701,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-2 h-24 w-full">
-            {Array.from({ length: 7 }).map((_, i) => (
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
               <div key={i} className="flex flex-col items-center flex-1 min-w-0">
                 {/* Stacked bar: chat (bottom, blue), exam (top, purple) */}
                 <div className="flex flex-col-reverse h-20 w-full">
@@ -647,11 +717,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <span className="text-xs text-muted-foreground mt-1 truncate">
-                  {(() => {
-                    const d = new Date()
-                    d.setDate(d.getDate() - (6 - i))
-                    return d.toLocaleDateString(undefined, { weekday: 'short' })
-                  })()}
+                  {day}
                 </span>
               </div>
             ))}

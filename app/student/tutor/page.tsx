@@ -83,24 +83,37 @@ export default function AITutorPage() {
     if (resumeId) {
       setIsLoadingSession(true)
       try {
-        const chatHistory = JSON.parse(localStorage.getItem("chatHistory") || "[]")
-        const session = chatHistory.find((s: any) => s.id === resumeId)
-
-        if (session) {
-          setSelectedSubject(session.subject)
-          setMessages(session.messages || [])
-          setCurrentSessionId(resumeId)
-          toast({
-            title: "Session Resumed",
-            description: `Continuing conversation: ${session.title}`,
+        // Fetch the specific session from database
+        fetch(`/api/chat-sessions?id=${resumeId}`)
+          .then(response => response.json())
+          .then(session => {
+            if (session && !session.error) {
+              setSelectedSubject(session.subject)
+              setMessages(session.messages || [])
+              setCurrentSessionId(resumeId)
+              toast({
+                title: "Session Resumed",
+                description: `Continuing conversation: ${session.title}`,
+              })
+            } else {
+              toast({
+                title: "Session Not Found",
+                description: "The requested conversation could not be found.",
+                variant: "destructive",
+              })
+            }
           })
-        } else {
-          toast({
-            title: "Session Not Found",
-            description: "The requested conversation could not be found.",
-            variant: "destructive",
+          .catch(error => {
+            console.error("Error loading session:", error)
+            toast({
+              title: "Error",
+              description: "Failed to load the conversation.",
+              variant: "destructive",
+            })
           })
-        }
+          .finally(() => {
+            setIsLoadingSession(false)
+          })
       } catch (error) {
         console.error("Error loading session:", error)
         toast({
@@ -108,7 +121,6 @@ export default function AITutorPage() {
           description: "Failed to load the conversation.",
           variant: "destructive",
         })
-      } finally {
         setIsLoadingSession(false)
       }
     }
@@ -134,63 +146,50 @@ export default function AITutorPage() {
     }
   }, [messages, isLoading])
 
-  // Save/Update chat session to localStorage
+  // Save/Update chat session to database
   useEffect(() => {
     if (messages.length > 0 && !isLoading) {
       try {
-        const existingSessions = JSON.parse(localStorage.getItem("chatHistory") || "[]")
-        let sessionToSave
-
-        if (currentSessionId) {
-          // Update existing session
-          const sessionIndex = existingSessions.findIndex((s: any) => s.id === currentSessionId)
-          if (sessionIndex !== -1) {
-            sessionToSave = {
-              ...existingSessions[sessionIndex],
-              lastMessage: messages[messages.length - 1]?.content
-                ? typeof messages[messages.length - 1].content === "string"
-                  ? messages[messages.length - 1].content.slice(0, 100)
-                  : "Image analysis in progress..."
-                : "...",
-              timestamp: new Date().toISOString(),
-              messageCount: messages.length,
-              messages: messages,
-              topic: detectTopicFromContent(messages, selectedSubject),
+        const sessionToSave = {
+          id: currentSessionId,
+          subject: selectedSubject,
+          topic: detectTopicFromContent(messages, selectedSubject),
+          title: currentSessionId ? undefined : (() => {
+            const firstUserMessage = messages.find((m) => m.role === "user")?.content
+            if (typeof firstUserMessage === "string") {
+              return firstUserMessage.slice(0, 50) + (firstUserMessage.length > 50 ? "..." : "")
+            } else if (Array.isArray(firstUserMessage)) {
+              return generateImageConversationTitle(messages, selectedSubject)
             }
-            existingSessions[sessionIndex] = sessionToSave
-          }
-        } else {
-          // Create new session
-          const newSessionId = `session_${Date.now()}`
-          setCurrentSessionId(newSessionId)
-
-          const firstUserMessage = messages.find((m) => m.role === "user")?.content
-          let title = "New Conversation"
-          if (typeof firstUserMessage === "string") {
-            title = firstUserMessage.slice(0, 50) + (firstUserMessage.length > 50 ? "..." : "")
-          } else if (Array.isArray(firstUserMessage)) {
-            title = generateImageConversationTitle(messages, selectedSubject)
-          }
-
-          sessionToSave = {
-            id: newSessionId,
-            subject: selectedSubject,
-            topic: detectTopicFromContent(messages, selectedSubject),
-            title: title,
-            lastMessage: messages[messages.length - 1]?.content
-              ? typeof messages[messages.length - 1].content === "string"
-                ? messages[messages.length - 1].content.slice(0, 100)
-                : "Image analysis in progress..."
-              : "...",
-            timestamp: new Date().toISOString(),
-            messageCount: messages.length,
-            messages: messages,
-          }
-          existingSessions.unshift(sessionToSave)
+            return "New Conversation"
+          })(),
+          lastMessage: messages[messages.length - 1]?.content
+            ? typeof messages[messages.length - 1].content === "string"
+              ? messages[messages.length - 1].content.slice(0, 100)
+              : "Image analysis in progress..."
+            : "...",
+          messageCount: messages.length,
+          messages: messages,
         }
 
-        localStorage.setItem("chatHistory", JSON.stringify(existingSessions.slice(0, 50)))
-        window.dispatchEvent(new CustomEvent("chatSessionUpdated"))
+        fetch('/api/chat-sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(sessionToSave),
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (!currentSessionId && data.id) {
+            setCurrentSessionId(data.id)
+          }
+          // Dispatch event to update other components
+          window.dispatchEvent(new CustomEvent("chatSessionUpdated"))
+        })
+        .catch(error => {
+          console.error("Failed to save chat session:", error)
+        })
       } catch (error) {
         console.error("Failed to save chat session:", error)
       }
@@ -410,6 +409,15 @@ export default function AITutorPage() {
     setUploadedImage(null)
   }
 
+  const handleCalculatorFocusChange = (hasFocus: boolean) => {
+    if (!hasFocus && textareaRef.current) {
+      // When calculator is closed or loses focus, focus the textarea
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
+    }
+  }
+
   const renderMessageContent = (content: any) => {
     if (typeof content === "string") {
       return <div className="whitespace-pre-wrap font-code">{content}</div>
@@ -498,7 +506,7 @@ export default function AITutorPage() {
     <div className="flex flex-col h-full max-w-4xl mx-auto">
       <Card className="mb-4">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className={getSubjectColor()}>{getSubjectIcon()}</AvatarFallback>
@@ -508,9 +516,9 @@ export default function AITutorPage() {
                 <p className="text-sm text-muted-foreground">Your personal learning assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28 sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -519,7 +527,7 @@ export default function AITutorPage() {
                   <SelectItem value="science">Science</SelectItem>
                 </SelectContent>
               </Select>
-              <Badge variant="secondary" className="bg-green-100 text-green-700">
+              <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
                 Online
               </Badge>
             </div>
@@ -605,7 +613,7 @@ export default function AITutorPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask me anything about your studies..."
-                className="min-h-[80px] pr-12 resize-none"
+                className="min-h-[80px] md:min-h-[80px] pr-12 resize-none text-base"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
@@ -623,46 +631,89 @@ export default function AITutorPage() {
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center md:flex-row md:gap-2 md:justify-start w-full">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-2"
-              >
-                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                Upload Image
-              </Button>
-              <Button
-                type="button"
-                variant={showMathKeyboard ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setShowMathKeyboard(!showMathKeyboard)
-                  setShowCalculator(false)
-                }}
-                className="flex items-center gap-2"
-              >
-                <Sigma className="h-4 w-4" />
-                Math Keyboard
-              </Button>
-              <Button
-                type="button"
-                variant={showCalculator ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setShowCalculator(!showCalculator)
-                  setShowMathKeyboard(false)
-                }}
-                className="flex items-center gap-2"
-              >
-                <CalculatorIcon className="h-4 w-4" />
-                Calculator
-              </Button>
-              <span className="text-xs text-muted-foreground ml-2">Press Enter to send, Shift+Enter for new line</span>
+              <div className="w-full flex md:hidden">
+                <div className="grid grid-cols-3 gap-2 w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex flex-col items-center justify-center h-10"
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                    <span className="text-xs">Upload</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={showMathKeyboard ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowMathKeyboard(!showMathKeyboard)
+                      setShowCalculator(false)
+                    }}
+                    className="flex flex-col items-center justify-center h-10"
+                  >
+                    <Sigma className="h-4 w-4" />
+                    <span className="text-xs">Math Keyboard</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={showCalculator ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowCalculator(!showCalculator)
+                      setShowMathKeyboard(false)
+                    }}
+                    className="flex flex-col items-center justify-center h-10"
+                  >
+                    <CalculatorIcon className="h-4 w-4" />
+                    <span className="text-xs">Calculator</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-2 h-9 md:h-8"
+                >
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                  <span>Upload Image</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={showMathKeyboard ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowMathKeyboard(!showMathKeyboard)
+                    setShowCalculator(false)
+                  }}
+                  className="flex items-center gap-2 h-9 md:h-8"
+                >
+                  <Sigma className="h-4 w-4" />
+                  <span>Math Keyboard</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={showCalculator ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowCalculator(!showCalculator)
+                    setShowMathKeyboard(false)
+                  }}
+                  className="flex items-center gap-2 h-9 md:h-8"
+                >
+                  <CalculatorIcon className="h-4 w-4" />
+                  <span>Calculator</span>
+                </Button>
+              </div>
+              <span className="text-xs text-muted-foreground ml-2 hidden md:inline">Press Enter to send, Shift+Enter for new line</span>
             </div>
           </form>
         </div>
@@ -671,7 +722,7 @@ export default function AITutorPage() {
       {showMathKeyboard && (
         <MathKeyboard onInsert={handleMathSymbolInsert} onClose={() => setShowMathKeyboard(false)} />
       )}
-      {showCalculator && <Calculator onClose={() => setShowCalculator(false)} />}
+      {showCalculator && <Calculator onClose={() => setShowCalculator(false)} onFocusChange={handleCalculatorFocusChange} />}
     </div>
   )
 }

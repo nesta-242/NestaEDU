@@ -32,7 +32,6 @@ export default function SignUpPage() {
     school: "",
     grade: "",
     agreeToTerms: false,
-    agreeToMarketing: false,
   })
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -280,14 +279,12 @@ export default function SignUpPage() {
                       <SelectValue placeholder="Select your grade level" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="7th Grade">7th Grade</SelectItem>
+                      <SelectItem value="8th Grade">8th Grade</SelectItem>
                       <SelectItem value="9th Grade">9th Grade</SelectItem>
                       <SelectItem value="10th Grade">10th Grade</SelectItem>
                       <SelectItem value="11th Grade">11th Grade</SelectItem>
                       <SelectItem value="12th Grade">12th Grade</SelectItem>
-                      <SelectItem value="College Freshman">College Freshman</SelectItem>
-                      <SelectItem value="College Sophomore">College Sophomore</SelectItem>
-                      <SelectItem value="College Junior">College Junior</SelectItem>
-                      <SelectItem value="College Senior">College Senior</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.grade && (
@@ -397,11 +394,11 @@ export default function SignUpPage() {
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
+                    <Link href="/terms" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                       Terms of Service
                     </Link>{" "}
                     and{" "}
-                    <Link href="/privacy" className="text-primary hover:underline">
+                    <Link href="/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                       Privacy Policy
                     </Link>
                   </Label>
@@ -414,21 +411,7 @@ export default function SignUpPage() {
                 </p>
               )}
 
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="agreeToMarketing"
-                  checked={formData.agreeToMarketing}
-                  onCheckedChange={(checked) => handleInputChange("agreeToMarketing", checked as boolean)}
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <Label
-                    htmlFor="agreeToMarketing"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I would like to receive educational tips and updates via email (optional)
-                  </Label>
-                </div>
-              </div>
+
             </div>
 
             {/* Submit Button */}

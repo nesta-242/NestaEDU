@@ -26,15 +26,12 @@ interface UserProfile {
 }
 
 const gradeOptions = [
+  "7th Grade",
+  "8th Grade",
   "9th Grade",
   "10th Grade",
   "11th Grade",
   "12th Grade",
-  "College Freshman",
-  "College Sophomore",
-  "College Junior",
-  "College Senior",
-  "Graduate Student",
 ]
 
 export default function ProfilePage() {
@@ -74,7 +71,6 @@ export default function ProfilePage() {
         const res = await fetch('/api/user/profile')
         if (res.ok) {
           const user = await res.json()
-          console.log('Loaded profile from API:', user)
           
           // Ensure all fields are strings, not null
           const sanitizedUser = {
@@ -94,10 +90,8 @@ export default function ProfilePage() {
           if (sanitizedUser.avatar) {
             setAvatarPreview(sanitizedUser.avatar)
             setOriginalAvatar(sanitizedUser.avatar)
-            console.log('Avatar loaded from API')
           }
         } else {
-          console.warn('API failed, falling back to localStorage')
           // fallback to localStorage if API fails
           const savedProfile = localStorage.getItem('userProfile')
           if (savedProfile) {
@@ -120,7 +114,6 @@ export default function ProfilePage() {
             if (sanitizedProfile.avatar) {
               setAvatarPreview(sanitizedProfile.avatar)
               setOriginalAvatar(sanitizedProfile.avatar)
-              console.log('Avatar loaded from localStorage')
             }
           }
         }
@@ -146,7 +139,6 @@ export default function ProfilePage() {
           setProfile(sanitizedProfile)
           if (sanitizedProfile.avatar) {
             setAvatarPreview(sanitizedProfile.avatar)
-            console.log('Avatar loaded from localStorage fallback')
           }
         }
       }
@@ -164,13 +156,9 @@ export default function ProfilePage() {
   // Cleanup effect to revert theme if user navigates away without saving
   useEffect(() => {
     return () => {
-      console.log('Cleanup effect running:', { hasThemeChanged, saveSuccessful: saveSuccessfulRef.current, originalTheme, currentTheme: theme })
       // If there are unsaved theme changes and save wasn't successful, revert to original theme
       if (hasThemeChanged && !saveSuccessfulRef.current) {
-        console.log('Reverting theme to:', originalTheme)
         setTheme(originalTheme)
-      } else {
-        console.log('Not reverting theme - save was successful or no changes')
       }
     }
   }, [hasThemeChanged, originalTheme, setTheme, theme])
@@ -183,10 +171,8 @@ export default function ProfilePage() {
   }
 
   const handleThemeChange = (newTheme: string) => {
-    console.log('Theme change requested:', { newTheme, currentTheme: theme, hasThemeChanged })
     setTheme(newTheme)
     setHasThemeChanged(true)
-    console.log('Theme change applied, hasThemeChanged set to true')
   }
 
   // Check if any changes have been made
@@ -331,8 +317,6 @@ export default function ProfilePage() {
         avatar: avatarPreview || profile.avatar,
       }
 
-      console.log('Saving profile with avatar:', !!profileToSave.avatar)
-
       // Save to backend
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
@@ -348,7 +332,6 @@ export default function ProfilePage() {
       }
       
       const updatedProfile = await res.json()
-      console.log('Profile updated successfully:', updatedProfile)
 
       // Ensure avatar is preserved
       if (avatarPreview && !updatedProfile.avatar) {
@@ -365,11 +348,9 @@ export default function ProfilePage() {
       
       // Update original theme to reflect the saved state
       if (hasThemeChanged) {
-        console.log('Saving theme changes:', { currentTheme: theme, originalTheme, hasThemeChanged })
         setOriginalTheme(theme || "system")
         setHasThemeChanged(false)
         saveSuccessfulRef.current = true
-        console.log('Theme save completed, saveSuccessful set to true')
       }
 
       // Dispatch event to notify other components
@@ -409,22 +390,14 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <button 
-              onClick={() => router.push("/student/dashboard")}
-              className="hover:text-foreground transition-colors"
-            >
-              Dashboard
-            </button>
-            <span>/</span>
-            <span>Profile Settings</span>
-          </div>
+      <Card>
+        <CardContent className="p-8 text-center">
           <h1 className="text-3xl font-bold">Profile Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
-        </div>
-      </div>
+          <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
+            Manage your account settings, personal information, and preferences
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Overview */}

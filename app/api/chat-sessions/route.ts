@@ -15,6 +15,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('id')
+
+    if (sessionId) {
+      // Fetch specific session
+      const session = await prisma.chatSession.findFirst({
+        where: { id: sessionId, userId },
+      })
+
+      if (!session) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      }
+
+      return NextResponse.json(session)
+    }
+
+    // Fetch all sessions
     const sessions = await prisma.chatSession.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
@@ -81,12 +98,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a chat session
+// DELETE - Delete a chat session or clear all sessions
 export async function DELETE(request: NextRequest) {
   try {
     const userId = getUserId(request)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    
+    if (body.clearAll) {
+      // Clear all sessions for the user
+      await prisma.chatSession.deleteMany({
+        where: { userId },
+      })
+      return NextResponse.json({ message: 'All sessions deleted successfully' })
     }
 
     const { searchParams } = new URL(request.url)

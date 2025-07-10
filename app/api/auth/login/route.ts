@@ -50,13 +50,6 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     })
-    response.cookies.set('test-cookie', 'hello', {
-      httpOnly: false,
-      path: '/',
-      maxAge: 60 * 60,
-      sameSite: 'lax',
-      secure: false,
-    })
     return response
 
   } catch (error) {

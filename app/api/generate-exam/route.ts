@@ -33,14 +33,6 @@ export async function POST(request: NextRequest) {
 
     // Check if OpenAI API key is available
     const apiKey = getOpenAIKey()
-    console.log('Exam generation - API key check:', {
-      hasKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      envVars: {
-        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-        openAIKeyLength: process.env.OPENAI_API_KEY?.length || 0
-      }
-    })
     
     if (!apiKey) {
       console.error("OpenAI API key not found")
@@ -456,16 +448,12 @@ VALIDATION CHECKLIST:
 Generate the exam now:`
 
     try {
-      console.log("Generating exam with OpenAI for subject:", subject)
-
       const { text } = await generateText({
         model: openai("gpt-4o"),
         prompt,
         temperature: 0.7,
         maxTokens: 8000,
       })
-
-      console.log("OpenAI response received, parsing JSON...")
 
       // Clean the response to ensure it's valid JSON
       let cleanedText = text.trim()
@@ -504,7 +492,6 @@ Generate the exam now:`
         }
       })
 
-      console.log("Exam generated successfully with", examData.questions.length, "questions")
       return NextResponse.json(examData)
     } catch (aiError) {
       console.error("OpenAI generation failed:", aiError)

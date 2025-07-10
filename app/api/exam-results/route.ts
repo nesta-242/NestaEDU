@@ -20,7 +20,23 @@ export async function GET(request: NextRequest) {
       take: 20, // Limit to 20 most recent results
     })
 
-    return NextResponse.json(results)
+    // Process results to include question results count
+    const processedResults = results.map(result => {
+      let questionResultsCount = 0
+      if (result.answers && typeof result.answers === 'object') {
+        const answersData = result.answers as any
+        if (answersData.questionResults && Array.isArray(answersData.questionResults)) {
+          questionResultsCount = answersData.questionResults.length
+        }
+      }
+      
+      return {
+        ...result,
+        questionResultsCount
+      }
+    })
+
+    return NextResponse.json(processedResults)
   } catch (error) {
     console.error('Error fetching exam results:', error)
     return NextResponse.json(

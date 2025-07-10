@@ -23,6 +23,11 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
     localStorage.removeItem("userProfile")
     localStorage.removeItem("userName")
     localStorage.removeItem("userAvatar")
+    
+    // Clear user-specific data (these are now stored in database, but clear any cached data)
+    localStorage.removeItem("chatHistory")
+    localStorage.removeItem("examResults")
+    localStorage.removeItem("sidebarCollapsed")
 
     // Redirect to home page
     window.location.href = "/"
@@ -30,7 +35,7 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
 
   const studentLinks = [
     { href: "/student/dashboard", label: "Dashboard", icon: Home },
-    { href: "/student/tutor", label: "AI Tutor", icon: MessageSquare },
+    { href: "/student/tutor", label: "Personalized AI Tutor", icon: MessageSquare },
     { href: "/student/subjects", label: "Past Sessions", icon: BookOpen },
     { href: "/student/practice-exam", label: "Practice Exams", icon: FileText },
   ]
@@ -45,7 +50,7 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
       <div className={cn("p-6 border-b", isCollapsed && "p-4")}>
         {!isCollapsed ? (
           <div className="flex items-center justify-between">
-            <ExamSafeLink href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <ExamSafeLink href="/student/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <PenTool className="w-6 h-6 text-primary" />
               <h2 className="text-xl font-bold">Nesta Education</h2>
             </ExamSafeLink>
@@ -55,7 +60,7 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <ExamSafeLink href="/" className="block hover:opacity-80 transition-opacity">
+            <ExamSafeLink href="/student/dashboard" className="block hover:opacity-80 transition-opacity">
               <PenTool className="w-8 h-8 text-primary" />
             </ExamSafeLink>
             <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8" title="Expand sidebar">

@@ -6,7 +6,9 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
   // Handle API routes that need authentication
-  if (request.nextUrl.pathname.startsWith('/api/user/profile')) {
+  if (request.nextUrl.pathname.startsWith('/api/user/profile') || 
+      request.nextUrl.pathname.startsWith('/api/chat-sessions') ||
+      request.nextUrl.pathname.startsWith('/api/exam-results')) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -64,6 +66,8 @@ export const config = {
   matcher: [
     '/student/:path*',
     '/api/chat',
+    '/api/chat-sessions/:path*',
+    '/api/exam-results/:path*',
     '/api/generate-exam',
     '/api/grade-exam',
     '/api/user/profile',

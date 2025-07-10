@@ -16,18 +16,12 @@ export const API_CONFIG = {
   
   // Development settings
   NODE_ENV: process.env.NODE_ENV || 'development',
-  APP_URL: process.env.APP_URL || 'http://localhost:3000'
+  APP_URL: process.env.APP_URL || ''
 }
 
 // Helper function to get API key with fallback
 export function getOpenAIKey() {
   const key = process.env.OPENAI_API_KEY
-  console.log('OpenAI API Key check:', {
-    hasKey: !!key,
-    keyLength: key?.length || 0,
-    keyPrefix: key?.substring(0, 10) + '...' || 'none',
-    environment: process.env.NODE_ENV
-  })
   return key
 }
 
@@ -65,7 +59,6 @@ export function validateEnvironment() {
     return false
   }
   
-  console.log('Environment validation passed')
   return true
 }
 

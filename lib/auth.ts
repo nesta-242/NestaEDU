@@ -50,12 +50,19 @@ export async function createUser(email: string, password: string, userData: Part
     // Create Supabase client with service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || API_CONFIG.SUPABASE_ANON_KEY
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration not found')
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL not configured')
     }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Use service role key if available, otherwise fall back to anon key
+    const keyToUse = supabaseServiceKey || supabaseAnonKey
+    if (!keyToUse) {
+      throw new Error('Supabase authentication keys not configured')
+    }
+    
+    const supabase = createClient(supabaseUrl, keyToUse)
     
     const { data: user, error } = await supabase
       .from('users')
@@ -98,12 +105,21 @@ export async function findUserByEmail(email: string): Promise<(UserData & { pass
     // Create Supabase client with service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || API_CONFIG.SUPABASE_ANON_KEY
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration not found')
+    if (!supabaseUrl) {
+      console.error('Missing Supabase URL')
+      throw new Error('Supabase URL not configured')
     }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Use service role key if available, otherwise fall back to anon key (limited functionality)
+    const keyToUse = supabaseServiceKey || supabaseAnonKey
+    if (!keyToUse) {
+      console.error('Missing Supabase keys')
+      throw new Error('Supabase authentication keys not configured')
+    }
+    
+    const supabase = createClient(supabaseUrl, keyToUse)
     
     const { data: user, error } = await supabase
       .from('users')
@@ -137,12 +153,19 @@ export async function findUserById(id: string): Promise<UserData | null> {
     // Create Supabase client with service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || API_CONFIG.SUPABASE_ANON_KEY
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration not found')
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL not configured')
     }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Use service role key if available, otherwise fall back to anon key
+    const keyToUse = supabaseServiceKey || supabaseAnonKey
+    if (!keyToUse) {
+      throw new Error('Supabase authentication keys not configured')
+    }
+    
+    const supabase = createClient(supabaseUrl, keyToUse)
     
     const { data: user, error } = await supabase
       .from('users')
