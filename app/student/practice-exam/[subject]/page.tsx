@@ -398,7 +398,7 @@ export default function ExamPage() {
 
       // Save results to database
       const examResult = {
-        subject: getExamInfo().title,
+        subject: subject, // Use the route parameter instead of the full title
         score: results.totalScore,
         maxScore: results.maxScore,
         percentage: results.percentage,
@@ -493,18 +493,32 @@ export default function ExamPage() {
               </div>
               
               {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{Math.round(loadingProgress)}%</span>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Progress</span>
+                  <span className="font-semibold text-primary">{Math.round(loadingProgress)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-4 overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
                   <div 
-                    className="bg-primary h-3 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${loadingProgress}%` }}
-                  ></div>
+                    className="h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden"
+                    style={{ 
+                      width: `${loadingProgress}%`,
+                      background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%)',
+                      boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)'
+                    }}
+                  >
+                    {/* Animated shimmer effect */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                        transform: 'translateX(-100%)',
+                        animation: 'shimmer 1.5s infinite'
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">
                   {loadingProgress < 30 && "Analyzing subject requirements..."}
                   {loadingProgress >= 30 && loadingProgress < 60 && "Generating questions..."}
                   {loadingProgress >= 60 && loadingProgress < 90 && "Creating answer options..."}
@@ -616,8 +630,9 @@ export default function ExamPage() {
     // Replace generic feedback with a message to the student
     let personalizedFeedback = examResults.feedback
     if (personalizedFeedback) {
-      // Try to replace generic phrases with direct address
+      // Enhanced personalization to speak directly to the student
       personalizedFeedback = personalizedFeedback
+        // Replace third-person references with direct address
         .replace(/\bThe student\b/gi, firstName)
         .replace(/\bthe student\b/gi, firstName)
         .replace(/\bStudent\b/gi, firstName)
@@ -626,10 +641,81 @@ export default function ExamPage() {
         .replace(/\btheir\b/gi, "your")
         .replace(/\bThey\b/gi, "You")
         .replace(/\bthey\b/gi, "you")
-        .replace(/\bYour performance\b/gi, `${firstName}, your performance`)
+        .replace(/\bHis\b/gi, "Your")
+        .replace(/\bhis\b/gi, "your")
+        .replace(/\bHer\b/gi, "Your")
+        .replace(/\bher\b/gi, "your")
+        .replace(/\bHe\b/gi, "You")
+        .replace(/\bhe\b/gi, "you")
+        .replace(/\bShe\b/gi, "You")
+        .replace(/\bshe\b/gi, "you")
+        // Improve overall feedback structure
         .replace(/\bOverall,\b/gi, `${firstName},`)
+        .replace(/\bOverall\b/gi, `${firstName}`)
+        .replace(/\bYour performance\b/gi, `${firstName}, your performance`)
         .replace(/^You /, `${firstName}, you `)
+        // Add direct address patterns
+        .replace(/\bperformed well\b/gi, "did well")
+        .replace(/\bdemonstrated\b/gi, "you demonstrated")
+        .replace(/\bshowed\b/gi, "you showed")
+        .replace(/\bneeds improvement\b/gi, "you can improve")
+        .replace(/\bneeds to work on\b/gi, "you should work on")
+        .replace(/\bshould focus on\b/gi, "you should focus on")
+        .replace(/\battention to detail is needed\b/gi, "you need to pay more attention to detail")
+        .replace(/\bunderstanding of\b/gi, "your understanding of")
+        .replace(/\bknowledge of\b/gi, "your knowledge of")
+        .replace(/\bconcepts\b/gi, "concepts")
+        .replace(/\bareas\b/gi, "areas")
+        .replace(/\bparticularly in\b/gi, "especially in")
+        .replace(/\bHowever,\b/gi, "However, ${firstName},")
+        .replace(/\bBut\b/gi, "But ${firstName},")
+        .replace(/\bIn conclusion,\b/gi, `${firstName},`)
+        .replace(/\bTo summarize,\b/gi, `${firstName},`)
     }
+    
+    // Personalize individual question feedback
+    const personalizedQuestionResults = examResults.questionResults.map(result => ({
+      ...result,
+      feedback: result.feedback
+        .replace(/\bThe student\b/gi, "You")
+        .replace(/\bthe student\b/gi, "you")
+        .replace(/\bStudent\b/gi, "You")
+        .replace(/\bstudent\b/gi, "you")
+        .replace(/\bTheir\b/gi, "Your")
+        .replace(/\btheir\b/gi, "your")
+        .replace(/\bThey\b/gi, "You")
+        .replace(/\bthey\b/gi, "you")
+        .replace(/\bHis\b/gi, "Your")
+        .replace(/\bhis\b/gi, "your")
+        .replace(/\bHer\b/gi, "Your")
+        .replace(/\bher\b/gi, "your")
+        .replace(/\bHe\b/gi, "You")
+        .replace(/\bhe\b/gi, "you")
+        .replace(/\bShe\b/gi, "You")
+        .replace(/\bshe\b/gi, "you")
+        .replace(/\bcorrectly applied\b/gi, "you correctly applied")
+        .replace(/\bproperly used\b/gi, "you properly used")
+        .replace(/\bunderstood\b/gi, "you understood")
+        .replace(/\bcalculated\b/gi, "you calculated")
+        .replace(/\bsolved\b/gi, "you solved")
+        .replace(/\bidentified\b/gi, "you identified")
+        .replace(/\bexplained\b/gi, "you explained")
+        .replace(/\bdescribed\b/gi, "you described")
+        .replace(/\bneeds to\b/gi, "you need to")
+        .replace(/\bshould\b/gi, "you should")
+        .replace(/\bcould\b/gi, "you could")
+        .replace(/\bwould\b/gi, "you would")
+        .replace(/\bwill\b/gi, "you will")
+        .replace(/\bcan\b/gi, "you can")
+        .replace(/\bmay\b/gi, "you may")
+        .replace(/\bmight\b/gi, "you might")
+        .replace(/\bCorrect\.\b/gi, "Correct! ")
+        .replace(/\bIncorrect\.\b/gi, "Incorrect. ")
+        .replace(/\bGood work!\b/gi, "Great job! ")
+        .replace(/\bExcellent!\b/gi, "Excellent work! ")
+        .replace(/\bWell done!\b/gi, "Well done! ")
+    }))
+    
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
@@ -685,36 +771,59 @@ export default function ExamPage() {
             <CardDescription>Detailed feedback for each question</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {examResults.questionResults.map((result, index) => (
-              <div key={result.questionId} className="border rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`p-1 rounded-full ${
-                      result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                    }`}
-                  >
-                    {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">Question {result.questionId}</h4>
-                      <Badge variant="outline">
-                        {result.pointsEarned}/{result.maxPoints} points
-                      </Badge>
+            {personalizedQuestionResults.map((result, index) => {
+              // Find the original question
+              const originalQuestion = examData.questions.find(q => q.id === result.questionId)
+              return (
+                <div key={result.questionId} className="border rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`p-1 rounded-full ${
+                        result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
-                    </p>
-                    {!result.isCorrect && result.correctAnswer && (
-                      <p className="text-sm text-green-600 mb-2">
-                        <strong>Correct answer:</strong> {result.correctAnswer}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium">Question {result.questionId}</h4>
+                        <Badge variant="outline">
+                          {result.pointsEarned}/{result.maxPoints} points
+                        </Badge>
+                      </div>
+                      
+                      {/* Original Question */}
+                      {originalQuestion && (
+                        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Question:</p>
+                          <p className="text-sm">{originalQuestion.question}</p>
+                          {originalQuestion.type === "multiple-choice" && originalQuestion.options && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Options:</p>
+                              <ul className="text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
+                                {originalQuestion.options.map((option, optIndex) => (
+                                  <li key={optIndex}>{option}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <p className="text-sm text-muted-foreground mb-2">
+                        <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
                       </p>
-                    )}
-                    <p className="text-sm">{result.feedback}</p>
+                      {!result.isCorrect && result.correctAnswer && (
+                        <p className="text-sm text-green-600 mb-2">
+                          <strong>Correct answer:</strong> {result.correctAnswer}
+                        </p>
+                      )}
+                      <p className="text-sm">{result.feedback}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </CardContent>
         </Card>
 

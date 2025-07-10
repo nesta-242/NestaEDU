@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     process.env.OPENAI_API_KEY = apiKey
 
     try {
-      const prompt = `Grade this exam and provide detailed feedback for each question.
+      const prompt = `Grade this exam and provide detailed feedback for each question. IMPORTANT: Write all feedback as if speaking directly TO the student, not ABOUT the student.
 
 EXAM DETAILS:
 Title: ${examData.title}
@@ -78,12 +78,20 @@ GRADING REQUIREMENTS:
 4. Calculate the total score and percentage
 5. Provide overall feedback on the student's performance
 
+FEEDBACK STYLE REQUIREMENTS:
+- Write ALL feedback as if speaking directly TO the student (use "you", "your", etc.)
+- Do NOT use third-person language like "the student", "they", "their"
+- Start feedback with encouraging phrases like "Great job!", "Correct!", "Excellent work!", "Well done!" for correct answers
+- For incorrect answers, be encouraging but specific about what needs improvement
+- Make the overall feedback personal and motivating
+- Use the student's name when possible in the overall feedback
+
 RESPONSE FORMAT - Return ONLY valid JSON in this exact structure:
 {
   "totalScore": number,
   "maxScore": ${examData.totalPoints},
   "percentage": number,
-  "feedback": "Overall feedback about the student's performance",
+  "feedback": "Overall feedback speaking directly to the student about their performance",
   "questionResults": [
     {
       "questionId": number,
@@ -91,7 +99,7 @@ RESPONSE FORMAT - Return ONLY valid JSON in this exact structure:
       "isCorrect": boolean,
       "pointsEarned": number,
       "maxPoints": number,
-      "feedback": "specific feedback for this question",
+      "feedback": "specific feedback for this question speaking directly to the student",
       "correctAnswer": "correct answer for reference"
     }
   ]
@@ -177,8 +185,8 @@ function generateFallbackGrading(examData: any, answers: any) {
       pointsEarned,
       maxPoints: question.points,
       feedback: isCorrect
-        ? "Good work! Your answer demonstrates understanding of the concept."
-        : "This answer needs improvement. Please review the topic and try again.",
+        ? "Great job! You demonstrated a good understanding of this concept."
+        : "You can improve on this question. Review the topic and try again for better results.",
       correctAnswer: question.correctAnswer,
     })
   }
@@ -194,7 +202,7 @@ function generateFallbackGrading(examData: any, answers: any) {
         ? "Excellent work! You have a strong understanding of the material."
         : percentage >= 60
           ? "Good effort! Review the areas where you lost points to improve further."
-          : "Keep studying! Focus on understanding the fundamental concepts."
+          : "Keep studying! Focus on understanding the fundamental concepts to improve your score."
     }`,
     questionResults,
   }

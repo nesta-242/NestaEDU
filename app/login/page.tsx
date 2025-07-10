@@ -44,6 +44,14 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
+      // Clear any existing user data to prevent showing old cached data
+      localStorage.removeItem("userProfile")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userEmail")
+      localStorage.removeItem("userRole")
+      localStorage.removeItem("isAuthenticated")
+      localStorage.removeItem("userFirstName")
+      
       // Store authentication data
       localStorage.setItem("isAuthenticated", "true")
       localStorage.setItem("userEmail", data.user.email)

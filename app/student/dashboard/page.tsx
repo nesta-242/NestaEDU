@@ -143,8 +143,9 @@ export default function DashboardPage() {
       }
       const data = await res.json()
       setUserProfile(data.user)
+    }
 
-      // Fetch dashboard data from database APIs
+    const fetchDashboardData = async () => {
       try {
         // Fetch chat sessions from database
         const chatRes = await fetch('/api/chat-sessions')
@@ -347,11 +348,23 @@ export default function DashboardPage() {
           weeklyChatActivity: [0, 0, 0, 0, 0, 0, 0],
           weeklyExamActivity: [0, 0, 0, 0, 0, 0, 0],
         })
-      } finally {
-        setIsLoading(false)
       }
     }
+
+    // Initial data fetch
     fetchUser()
+    fetchDashboardData().finally(() => setIsLoading(false))
+
+    // Listen for chat session updates
+    const handleChatSessionUpdate = () => {
+      fetchDashboardData()
+    }
+
+    window.addEventListener("chatSessionUpdated", handleChatSessionUpdate)
+
+    return () => {
+      window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
+    }
   }, [router])
 
   const getUserInitials = () => {

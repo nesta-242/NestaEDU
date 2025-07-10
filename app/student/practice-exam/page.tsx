@@ -52,6 +52,22 @@ export default function PracticeExamPage() {
   const [examResults, setExamResults] = useState<ExamResult[]>([])
   const [selectedExam, setSelectedExam] = useState<DetailedExamResult | null>(null)
   const [isLoadingExam, setIsLoadingExam] = useState(false)
+  const [activeTab, setActiveTab] = useState("new-exam")
+
+  // Function to map route parameter subjects to display names
+  const getSubjectDisplayName = (subjectRoute: string) => {
+    const subjectMap: { [key: string]: string } = {
+      'bjc-math': 'BJC Mathematics',
+      'bjc-general-science': 'BJC General Science',
+      'bjc-health-science': 'BJC Health Science',
+      'bgcse-math': 'BGCSE Mathematics',
+      'bgcse-chemistry': 'BGCSE Chemistry',
+      'bgcse-physics': 'BGCSE Physics',
+      'bgcse-biology': 'BGCSE Biology',
+      'bgcse-combined-science': 'BGCSE Combined Science'
+    }
+    return subjectMap[subjectRoute] || subjectRoute
+  }
 
   useEffect(() => {
     const loadExamResults = async () => {
@@ -61,7 +77,7 @@ export default function PracticeExamPage() {
           const results = await response.json()
           const examResults = results.map((result: any) => ({
             id: result.id,
-            subject: result.subject,
+            subject: getSubjectDisplayName(result.subject), // Convert route parameter to display name
             score: result.score,
             maxScore: result.maxScore,
             percentage: result.percentage,
@@ -331,10 +347,7 @@ export default function PracticeExamPage() {
             <p className="text-muted-foreground mb-4">
               You haven't taken any practice exams yet. Start with a new exam to see your results here.
             </p>
-            <Button onClick={() => {
-              const newExamTab = document.querySelector('[data-value="new-exam"]') as HTMLElement
-              if (newExamTab) newExamTab.click()
-            }}>
+            <Button onClick={() => setActiveTab("new-exam")}>
               Take Your First Exam
             </Button>
           </CardContent>
@@ -483,7 +496,7 @@ export default function PracticeExamPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="new-exam" className="w-full">
+      <Tabs defaultValue="new-exam" className="w-full" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="new-exam" data-value="new-exam">New Exam</TabsTrigger>
           <TabsTrigger value="past-exams">Past Exams ({examResults.length})</TabsTrigger>

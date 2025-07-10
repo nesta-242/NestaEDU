@@ -13,7 +13,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "next-themes"
-import { Camera, X, Sun, Moon, Monitor, User, Mail, Phone, GraduationCap, Loader2 } from "lucide-react"
+import { Camera, X, Sun, Moon, Monitor, User, Mail, Phone, GraduationCap, Loader2, Crop } from "lucide-react"
+import { ImageCropper } from "@/components/image-cropper"
 
 interface UserProfile {
   firstName: string
@@ -56,9 +57,11 @@ export default function ProfilePage() {
   const [hasThemeChanged, setHasThemeChanged] = useState(false)
   const saveSuccessfulRef = useRef(false)
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({})
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true) // Start with loading true
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
+  const [showCropper, setShowCropper] = useState(false)
+  const [tempImageSrc, setTempImageSrc] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
@@ -67,6 +70,7 @@ export default function ProfilePage() {
   // Load profile data on component mount
   useEffect(() => {
     const fetchProfile = async () => {
+      setIsLoading(true) // Ensure loading state is set
       try {
         const res = await fetch('/api/user/profile')
         if (res.ok) {
@@ -92,7 +96,7 @@ export default function ProfilePage() {
             setOriginalAvatar(sanitizedUser.avatar)
           }
         } else {
-          // fallback to localStorage if API fails
+          // Only fallback to localStorage if API actually fails
           const savedProfile = localStorage.getItem('userProfile')
           if (savedProfile) {
             const parsedProfile = JSON.parse(savedProfile)
@@ -119,7 +123,7 @@ export default function ProfilePage() {
         }
       } catch (error) {
         console.error('Error loading profile:', error)
-        // fallback to localStorage if fetch fails
+        // Only fallback to localStorage if fetch actually fails
         const savedProfile = localStorage.getItem('userProfile')
         if (savedProfile) {
           const parsedProfile = JSON.parse(savedProfile)
@@ -137,10 +141,14 @@ export default function ProfilePage() {
           }
           
           setProfile(sanitizedProfile)
+          setOriginalProfile(sanitizedProfile)
           if (sanitizedProfile.avatar) {
             setAvatarPreview(sanitizedProfile.avatar)
+            setOriginalAvatar(sanitizedProfile.avatar)
           }
         }
+      } finally {
+        setIsLoading(false) // Always set loading to false when done
       }
     }
     fetchProfile()
@@ -257,23 +265,45 @@ export default function ProfilePage() {
       setAvatarFile(file)
 
       try {
-        // Compress and create preview
-        const compressedDataUrl = await compressImage(file)
-        setAvatarPreview(compressedDataUrl)
-        
-        // Show success message
-        toast({
-          title: "Image uploaded",
-          description: "Your profile picture has been updated. Click 'Save Changes' to keep it.",
-        })
+        // Create a temporary URL for the cropper
+        const tempUrl = URL.createObjectURL(file)
+        setTempImageSrc(tempUrl)
+        setShowCropper(true)
       } catch (error) {
-        console.error('Error compressing image:', error)
+        console.error('Error processing image:', error)
         toast({
           title: "Error",
           description: "Failed to process image. Please try again.",
           variant: "destructive",
         })
       }
+    }
+  }
+
+  const handleCropComplete = (croppedImage: string) => {
+    setAvatarPreview(croppedImage)
+    setShowCropper(false)
+    setTempImageSrc("")
+    
+    // Clean up the temporary URL
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc)
+    }
+    
+    toast({
+      title: "Image cropped",
+      description: "Your profile picture has been cropped. Click 'Save Changes' to keep it.",
+    })
+  }
+
+  const handleCropCancel = () => {
+    setShowCropper(false)
+    setTempImageSrc("")
+    setAvatarFile(null)
+    
+    // Clean up the temporary URL
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc)
     }
   }
 
@@ -399,7 +429,15 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading profile...</span>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Overview */}
         <Card className="md:col-span-1">
           <CardHeader>
@@ -438,8 +476,8 @@ export default function ProfilePage() {
 
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="w-full">
-                <Camera className="h-4 w-4 mr-2" />
-                Upload Photo
+                <Crop className="h-4 w-4 mr-2" />
+                Upload & Crop Photo
               </Button>
             </div>
           </CardContent>
@@ -624,8 +662,17 @@ export default function ProfilePage() {
               )}
             </Button>
           </div>
+                  </div>
         </div>
-      </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      <ImageCropper
+        isOpen={showCropper}
+        onClose={handleCropCancel}
+        onCrop={handleCropComplete}
+        imageSrc={tempImageSrc}
+      />
     </div>
   )
 }

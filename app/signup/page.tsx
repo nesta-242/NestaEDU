@@ -119,6 +119,15 @@ export default function SignUpPage() {
         throw new Error(data.error || 'Signup failed')
       }
 
+      // Clear any existing user data to prevent showing old cached data
+      localStorage.removeItem("userProfile")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userEmail")
+      localStorage.removeItem("userRole")
+      localStorage.removeItem("isAuthenticated")
+      localStorage.removeItem("userFirstName")
+      localStorage.removeItem("isLoggedIn")
+
       // Save user data to localStorage for client-side access
       const userData = {
         id: data.user.id,
