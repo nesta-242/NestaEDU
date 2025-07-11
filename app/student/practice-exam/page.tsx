@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { capitalizeSubject } from "@/lib/utils"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -79,11 +80,11 @@ export default function PracticeExamPage() {
             id: result.id,
             subject: getSubjectDisplayName(result.subject), // Convert route parameter to display name
             score: result.score,
-            maxScore: result.maxScore,
+            maxScore: result.max_score, // Map from snake_case
             percentage: result.percentage,
-            totalQuestions: result.totalQuestions,
-            timeSpent: result.timeSpent || 0,
-            date: result.createdAt,
+            totalQuestions: result.total_questions, // Map from snake_case
+            timeSpent: result.time_spent || 0, // Map from snake_case
+            date: result.created_at, // Map from snake_case
             feedback: result.feedback,
           }))
           setExamResults(examResults)
@@ -101,14 +102,35 @@ export default function PracticeExamPage() {
   }, [])
 
   const loadDetailedExam = async (examId: string) => {
+    console.log('Loading detailed exam for ID:', examId)
     setIsLoadingExam(true)
     try {
       const response = await fetch(`/api/exam-results/${examId}`)
+      console.log('API response status:', response.status)
+      
       if (response.ok) {
         const result = await response.json()
-        setSelectedExam(result)
+        console.log('Detailed exam result:', result)
+        
+        // Map the API response to the expected structure
+        const mappedResult: DetailedExamResult = {
+          id: result.id,
+          subject: getSubjectDisplayName(result.subject),
+          score: result.score,
+          maxScore: result.max_score, // Map from snake_case
+          percentage: result.percentage,
+          totalQuestions: result.total_questions, // Map from snake_case
+          timeSpent: result.time_spent || 0, // Map from snake_case
+          date: result.created_at, // Map from snake_case
+          feedback: result.feedback,
+          questionResults: result.questionResults || []
+        }
+        
+        console.log('Mapped result:', mappedResult)
+        setSelectedExam(mappedResult)
       } else {
-        console.error('Failed to fetch detailed exam result:', response.status)
+        const errorText = await response.text()
+        console.error('Failed to fetch detailed exam result:', response.status, errorText)
       }
     } catch (error) {
       console.error('Error loading detailed exam result:', error)
@@ -337,152 +359,160 @@ export default function PracticeExamPage() {
     </div>
   )
 
-  const renderPastExamsTab = () => (
-    <div className="space-y-6">
-      {examResults.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Past Exams Yet</h3>
-            <p className="text-muted-foreground mb-4">
-              You haven't taken any practice exams yet. Start with a new exam to see your results here.
-            </p>
-            <Button onClick={() => setActiveTab("new-exam")}>
-              Take Your First Exam
-            </Button>
-          </CardContent>
-        </Card>
-      ) : isLoadingExam ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-            <p className="text-muted-foreground">Loading exam details...</p>
-          </CardContent>
-        </Card>
-      ) : selectedExam ? (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="outline" 
-              onClick={() => setSelectedExam(null)}
-              className="flex items-center gap-2"
-            >
-              ← Back to Past Exams
-            </Button>
-          </div>
-
+  const renderPastExamsTab = () => {
+    console.log('Rendering past exams tab:', {
+      examResultsLength: examResults.length,
+      isLoadingExam,
+      selectedExam: !!selectedExam
+    })
+    
+    return (
+      <div className="space-y-6">
+        {examResults.length === 0 ? (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-                Exam Results: {selectedExam.subject}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-2">
-                <div className="text-4xl font-bold text-primary">
-                  {selectedExam.score}/{selectedExam.maxScore}
-                </div>
-                <div className="text-2xl font-semibold text-green-600">{selectedExam.percentage}%</div>
-                <Badge variant={selectedExam.percentage >= 70 ? "default" : "secondary"} className="mt-2">
-                  {selectedExam.percentage >= 90
-                    ? "Excellent"
-                    : selectedExam.percentage >= 80
-                      ? "Good"
-                      : selectedExam.percentage >= 70
-                        ? "Satisfactory"
-                        : "Needs Improvement"}
-                </Badge>
-                <p className="text-muted-foreground mt-4">{selectedExam.feedback}</p>
-              </div>
+            <CardContent className="p-8 text-center">
+              <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Past Exams Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                You haven't taken any practice exams yet. Start with a new exam to see your results here.
+              </p>
+              <Button onClick={() => setActiveTab("new-exam")}>
+                Take Your First Exam
+              </Button>
             </CardContent>
           </Card>
+        ) : isLoadingExam ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="flex items-center justify-center mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+              <p className="text-muted-foreground">Loading exam details...</p>
+            </CardContent>
+          </Card>
+        ) : selectedExam ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedExam(null)}
+                className="flex items-center gap-2"
+              >
+                ← Back to Past Exams
+              </Button>
+            </div>
 
-          {selectedExam.questionResults && (
             <Card>
               <CardHeader>
-                <CardTitle>Question-by-Question Review</CardTitle>
-                <CardDescription>Detailed feedback for each question</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {selectedExam.questionResults.map((result, index) => (
-                  <div key={result.questionId} className="border rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`p-1 rounded-full ${
-                          result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">Question {result.questionId}</h4>
-                          <Badge variant="outline">
-                            {result.pointsEarned}/{result.maxPoints} points
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
-                        </p>
-                        {!result.isCorrect && result.correctAnswer && (
-                          <p className="text-sm text-green-600 mb-2">
-                            <strong>Correct answer:</strong> {result.correctAnswer}
-                          </p>
-                        )}
-                        <p className="text-sm">{result.feedback}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {examResults.map((result) => (
-            <Card
-              key={result.id}
-              className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 hover:shadow-lg transition-all duration-200 cursor-pointer"
-              onClick={() => loadDetailedExam(result.id)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{result.subject}</CardTitle>
-                  {getPerformanceBadge(result.percentage)}
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  Exam Results: {capitalizeSubject(selectedExam.subject)}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Score:</span>
-                    <span className="font-medium">
-                      {result.score}/{result.totalQuestions}
-                    </span>
+                <div className="text-center space-y-2">
+                  <div className="text-4xl font-bold text-primary">
+                    {selectedExam.score}/{selectedExam.maxScore}
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Percentage:</span>
-                    <span className="font-medium">{result.percentage}%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Time:</span>
-                    <span className="font-medium">{result.timeSpent} min</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Date:</span>
-                    <span>{new Date(result.date).toLocaleDateString()}</span>
-                  </div>
+                  <div className="text-2xl font-semibold text-green-600">{selectedExam.percentage}%</div>
+                  <Badge variant={selectedExam.percentage >= 70 ? "default" : "secondary"} className="mt-2">
+                    {selectedExam.percentage >= 90
+                      ? "Excellent"
+                      : selectedExam.percentage >= 80
+                        ? "Good"
+                        : selectedExam.percentage >= 70
+                          ? "Satisfactory"
+                          : "Needs Improvement"}
+                  </Badge>
+                  <p className="text-muted-foreground mt-4">{selectedExam.feedback}</p>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+
+            {selectedExam.questionResults && selectedExam.questionResults.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Question-by-Question Review</CardTitle>
+                  <CardDescription>Detailed feedback for each question</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedExam.questionResults.map((result, index) => (
+                    <div key={result.questionId} className="border rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`p-1 rounded-full ${
+                            result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                          }`}
+                        >
+                          {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">Question {result.questionId}</h4>
+                            <Badge variant="outline">
+                              {result.pointsEarned}/{result.maxPoints} points
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
+                          </p>
+                          {!result.isCorrect && result.correctAnswer && (
+                            <p className="text-sm text-green-600 mb-2">
+                              <strong>Correct answer:</strong> {result.correctAnswer}
+                            </p>
+                          )}
+                          <p className="text-sm">{result.feedback}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {examResults.map((result) => (
+              <Card
+                key={result.id}
+                className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                onClick={() => loadDetailedExam(result.id)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{result.subject}</CardTitle>
+                    {getPerformanceBadge(result.percentage)}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Score:</span>
+                      <span className="font-medium">
+                        {result.score}/{result.totalQuestions}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Percentage:</span>
+                      <span className="font-medium">{result.percentage}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Time:</span>
+                      <span className="font-medium">{result.timeSpent} min</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Date:</span>
+                      <span>{new Date(result.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -496,20 +526,31 @@ export default function PracticeExamPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="new-exam" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="new-exam" data-value="new-exam">New Exam</TabsTrigger>
-          <TabsTrigger value="past-exams">Past Exams ({examResults.length})</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="new-exam" className="mt-6">
-          {renderNewExamTab()}
-        </TabsContent>
-        
-        <TabsContent value="past-exams" className="mt-6">
-          {renderPastExamsTab()}
-        </TabsContent>
-      </Tabs>
+      {/* Button group for switching views */}
+      <div className="flex justify-center gap-4 mt-4">
+        <Button
+          variant={activeTab === "new-exam" ? "default" : "outline"}
+          size="lg"
+          className="flex items-center gap-2 text-lg"
+          onClick={() => setActiveTab("new-exam")}
+        >
+          <span role="img" aria-label="New Exam">🆕</span> New Exam
+        </Button>
+        <Button
+          variant={activeTab === "past-exams" ? "default" : "outline"}
+          size="lg"
+          className="flex items-center gap-2 text-lg"
+          onClick={() => setActiveTab("past-exams")}
+        >
+          <span role="img" aria-label="Past Exams">📜</span> Past Exams ({examResults.length})
+        </Button>
+      </div>
+
+      {/* Conditionally render sections */}
+      <div className="mt-6">
+        {activeTab === "new-exam" && renderNewExamTab()}
+        {activeTab === "past-exams" && renderPastExamsTab()}
+      </div>
     </div>
   )
 }

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,58 +8,56 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  passwordHash String
-  firstName   String?
-  lastName    String?
-  phone       String?
-  gradeLevel  String?
-  school      String?
-  avatar      String?  // base64 encoded
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String        @unique @db.VarChar(255)
+  password_hash String        @db.VarChar(255)
+  first_name    String?       @db.VarChar(100)
+  last_name     String?       @db.VarChar(100)
+  phone         String?       @db.VarChar(20)
+  grade_level   String?       @db.VarChar(50)
+  school        String?       @db.VarChar(200)
+  avatar        String?
+  full_image    String?
+  created_at    DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?     @default(now()) @db.Timestamp(6)
+  chat_sessions ChatSession[]
+  exam_results  ExamResult[]
 
-  // Relations
-  chatSessions ChatSession[]
-  examResults  ExamResult[]
-
+  @@index([email], map: "idx_users_email")
   @@map("users")
 }
 
 model ChatSession {
-  id           String   @id @default(cuid())
-  userId       String
-  subject      String
-  topic        String?
-  title        String?
-  lastMessage  String?
-  messageCount Int      @default(0)
-  messages     Json     // Store full conversation
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String?   @db.Uuid
+  subject       String    @db.VarChar(50)
+  topic         String?   @db.VarChar(100)
+  title         String?   @db.VarChar(255)
+  last_message  String?
+  message_count Int?      @default(0)
+  messages      Json?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  users         User?     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  @@index([user_id], map: "idx_chat_sessions_user_id")
   @@map("chat_sessions")
 }
 
 model ExamResult {
-  id             String   @id @default(cuid())
-  userId         String
-  subject        String
-  score          Int
-  maxScore       Int
-  percentage     Decimal  @db.Decimal(5, 2)
-  totalQuestions Int
-  timeSpent      Int?     // in minutes
-  answers        Json?    // Store user answers
-  feedback       String?
-  createdAt      DateTime @default(now())
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String?   @db.Uuid
+  subject         String    @db.VarChar(50)
+  score           Int
+  max_score       Int
+  percentage      Decimal   @db.Decimal(5, 2)
+  total_questions Int
+  time_spent      Int?
+  answers         Json?
+  feedback        String?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  users           User?     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  @@index([user_id], map: "idx_exam_results_user_id")
   @@map("exam_results")
 }

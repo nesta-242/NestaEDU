@@ -52,17 +52,40 @@ export async function createUser(email: string, password: string, userData: Part
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || API_CONFIG.SUPABASE_ANON_KEY
     
+    console.log('Supabase URL:', supabaseUrl)
+    console.log('Service key exists:', !!supabaseServiceKey)
+    console.log('Anon key exists:', !!supabaseAnonKey)
+    
     if (!supabaseUrl) {
       throw new Error('Supabase URL not configured')
     }
     
-    // Use service role key if available, otherwise fall back to anon key
-    const keyToUse = supabaseServiceKey || supabaseAnonKey
+    // Try using service role key first, then fall back to anon key
+    let keyToUse = supabaseServiceKey
+    let keyType = 'service role'
+    
+    if (!keyToUse) {
+      keyToUse = supabaseAnonKey
+      keyType = 'anon'
+    }
+    
     if (!keyToUse) {
       throw new Error('Supabase authentication keys not configured')
     }
     
+    console.log('Using Supabase key type:', keyType)
+    console.log('Key prefix:', keyToUse.substring(0, 20) + '...')
+    
     const supabase = createClient(supabaseUrl, keyToUse)
+    
+    console.log('Attempting to insert user with data:', {
+      email,
+      first_name: userData.firstName,
+      last_name: userData.lastName,
+      grade_level: userData.gradeLevel,
+      school: userData.school,
+      password_hash: '[HIDDEN]'
+    })
     
     const { data: user, error } = await supabase
       .from('users')
@@ -81,8 +104,14 @@ export async function createUser(email: string, password: string, userData: Part
     
     if (error) {
       console.error('Supabase error in createUser:', error)
-      throw new Error('Failed to create user.')
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      console.error('Error details:', error.details)
+      console.error('Error hint:', error.hint)
+      throw new Error(`Failed to create user: ${error.message}`)
     }
+    
+    console.log('User created successfully:', user)
     
     return {
       id: user.id,
@@ -94,9 +123,9 @@ export async function createUser(email: string, password: string, userData: Part
       school: user.school,
       avatar: user.avatar,
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Database error in createUser:', error)
-    throw new Error('Database connection failed. Please check your database configuration.')
+    throw new Error(`Database connection failed: ${error.message}`)
   }
 }
 

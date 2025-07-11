@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     }
 
     const results = await prisma.examResult.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
       take: 20, // Limit to 20 most recent results
     })
 
@@ -39,8 +39,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(processedResults)
   } catch (error) {
     console.error('Error fetching exam results:', error)
+    
+    // Check if it's a database connection error
+    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed',
+          details: 'Unable to connect to the database. Please check your database configuration.',
+          code: 'DB_CONNECTION_ERROR'
+        },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
@@ -50,31 +66,54 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const userId = getUserId(request)
+    console.log('Exam results POST - User ID:', userId)
+    
     if (!userId) {
+      console.error('No user ID found in request headers')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { subject, score, maxScore, percentage, totalQuestions, timeSpent, answers, feedback } = await request.json()
+    const body = await request.json()
+    console.log('Exam results POST - Request body:', body)
+    
+    const { subject, score, maxScore, percentage, totalQuestions, timeSpent, answers, feedback } = body
 
     const result = await prisma.examResult.create({
       data: {
-        userId,
+        user_id: userId,
         subject,
         score,
-        maxScore,
+        max_score: maxScore,
         percentage,
-        totalQuestions,
-        timeSpent,
+        total_questions: totalQuestions,
+        time_spent: timeSpent,
         answers,
         feedback,
       },
     })
 
+    console.log('Exam result saved successfully:', result)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Error saving exam result:', error)
+    
+    // Check if it's a database connection error
+    if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed',
+          details: 'Unable to connect to the database. Please check your database configuration.',
+          code: 'DB_CONNECTION_ERROR'
+        },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

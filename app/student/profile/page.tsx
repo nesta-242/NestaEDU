@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "next-themes"
 import { Camera, X, Sun, Moon, Monitor, User, Mail, Phone, GraduationCap, Loader2, Crop } from "lucide-react"
 import { ImageCropper } from "@/components/image-cropper"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface UserProfile {
   firstName: string
@@ -24,6 +25,7 @@ interface UserProfile {
   gradeLevel: string
   school: string
   avatar?: string
+  fullImage?: string // Store the full original image for refocusing
 }
 
 const gradeOptions = [
@@ -58,8 +60,10 @@ export default function ProfilePage() {
   const saveSuccessfulRef = useRef(false)
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({})
   const [isLoading, setIsLoading] = useState(true) // Start with loading true
+  const [isSaving, setIsSaving] = useState(false) // Separate state for saving
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
+  const [fullImagePreview, setFullImagePreview] = useState<string>("") // Store full image for refocusing
   const [showCropper, setShowCropper] = useState(false)
   const [tempImageSrc, setTempImageSrc] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -85,7 +89,8 @@ export default function ProfilePage() {
             phone: user.phone || "",
             gradeLevel: user.gradeLevel || "",
             school: user.school || "",
-            avatar: user.avatar || ""
+            avatar: user.avatar || "",
+            fullImage: user.fullImage || ""
           }
           
           setProfile(sanitizedUser)
@@ -94,6 +99,9 @@ export default function ProfilePage() {
           if (sanitizedUser.avatar) {
             setAvatarPreview(sanitizedUser.avatar)
             setOriginalAvatar(sanitizedUser.avatar)
+          }
+          if (sanitizedUser.fullImage) {
+            setFullImagePreview(sanitizedUser.fullImage)
           }
         } else {
           // Only fallback to localStorage if API actually fails
@@ -110,7 +118,8 @@ export default function ProfilePage() {
               phone: parsedProfile.phone || "",
               gradeLevel: parsedProfile.gradeLevel || "",
               school: parsedProfile.school || "",
-              avatar: parsedProfile.avatar || ""
+              avatar: parsedProfile.avatar || "",
+              fullImage: parsedProfile.fullImage || ""
             }
             
             setProfile(sanitizedProfile)
@@ -118,6 +127,9 @@ export default function ProfilePage() {
             if (sanitizedProfile.avatar) {
               setAvatarPreview(sanitizedProfile.avatar)
               setOriginalAvatar(sanitizedProfile.avatar)
+            }
+            if (sanitizedProfile.fullImage) {
+              setFullImagePreview(sanitizedProfile.fullImage)
             }
           }
         }
@@ -137,7 +149,8 @@ export default function ProfilePage() {
             phone: parsedProfile.phone || "",
             gradeLevel: parsedProfile.gradeLevel || "",
             school: parsedProfile.school || "",
-            avatar: parsedProfile.avatar || ""
+            avatar: parsedProfile.avatar || "",
+            fullImage: parsedProfile.fullImage || ""
           }
           
           setProfile(sanitizedProfile)
@@ -145,6 +158,9 @@ export default function ProfilePage() {
           if (sanitizedProfile.avatar) {
             setAvatarPreview(sanitizedProfile.avatar)
             setOriginalAvatar(sanitizedProfile.avatar)
+          }
+          if (sanitizedProfile.fullImage) {
+            setFullImagePreview(sanitizedProfile.fullImage)
           }
         }
       } finally {
@@ -239,6 +255,27 @@ export default function ProfilePage() {
     })
   }
 
+  const storeFullImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      
+      img.onload = () => {
+        // Use the original image dimensions without compression
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        
+        // Draw the full image at original resolution
+        ctx.drawImage(img, 0, 0)
+        const fullImageDataUrl = canvas.toDataURL('image/jpeg', 0.9) // 90% quality for full image
+        resolve(fullImageDataUrl)
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -268,6 +305,11 @@ export default function ProfilePage() {
         // Create a temporary URL for the cropper
         const tempUrl = URL.createObjectURL(file)
         setTempImageSrc(tempUrl)
+        
+        // Store the full original image for later refocusing (no compression)
+        const fullImageDataUrl = await storeFullImage(file)
+        setFullImagePreview(fullImageDataUrl)
+        
         setShowCropper(true)
       } catch (error) {
         console.error('Error processing image:', error)
@@ -291,8 +333,8 @@ export default function ProfilePage() {
     }
     
     toast({
-      title: "Image cropped",
-      description: "Your profile picture has been cropped. Click 'Save Changes' to keep it.",
+      title: "Image centered",
+      description: "Your profile picture has been centered. Click 'Save Changes' to keep it.",
     })
   }
 
@@ -310,9 +352,11 @@ export default function ProfilePage() {
   const removeAvatar = () => {
     setAvatarFile(null)
     setAvatarPreview("")
+    setFullImagePreview("")
     setProfile((prev) => ({
       ...prev,
-      avatar: undefined,
+      avatar: "", // Set to empty string instead of undefined
+      fullImage: "", // Clear the full image too
     }))
   }
 
@@ -338,13 +382,14 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!validateForm()) return
 
-    setIsLoading(true)
+    setIsSaving(true)
 
     try {
-      // Include avatar in profile if uploaded
+      // Include avatar and full image in profile
       const profileToSave = {
         ...profile,
-        avatar: avatarPreview || profile.avatar,
+        avatar: avatarPreview || "", // Use empty string if no preview
+        fullImage: fullImagePreview || "", // Include the full image
       }
 
       // Save to backend
@@ -363,9 +408,17 @@ export default function ProfilePage() {
       
       const updatedProfile = await res.json()
 
-      // Ensure avatar is preserved
-      if (avatarPreview && !updatedProfile.avatar) {
+      // Ensure avatar and full image are preserved or cleared
+      if (avatarPreview) {
         updatedProfile.avatar = avatarPreview
+      } else {
+        updatedProfile.avatar = "" // Ensure it's cleared
+      }
+      
+      if (fullImagePreview) {
+        updatedProfile.fullImage = fullImagePreview
+      } else {
+        updatedProfile.fullImage = "" // Ensure it's cleared
       }
 
       // Save to localStorage
@@ -373,7 +426,7 @@ export default function ProfilePage() {
 
       // Update original values to reflect the saved state
       setOriginalProfile(updatedProfile)
-      setOriginalAvatar(avatarPreview || updatedProfile.avatar || "")
+      setOriginalAvatar(avatarPreview || "")
       setAvatarFile(null) // Clear the file since it's now saved
       
       // Update original theme to reflect the saved state
@@ -392,13 +445,11 @@ export default function ProfilePage() {
 
       toast({
         title: 'Profile saved',
-        description: 'Your profile has been updated successfully. Redirecting to dashboard...',
+        description: 'Your profile has been updated successfully.',
       })
 
-      // Redirect to dashboard after a short delay to show the toast
-      setTimeout(() => {
-        router.push('/student/dashboard')
-      }, 1500)
+      // Redirect to dashboard immediately
+      router.push('/student/dashboard')
     } catch (error) {
       console.error('Error saving profile:', error)
       toast({
@@ -407,7 +458,7 @@ export default function ProfilePage() {
         variant: 'destructive',
       })
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
@@ -429,11 +480,11 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {isLoading || isSaving ? (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span>Loading profile...</span>
+            <span>{isSaving ? "Saving Changes..." : "Loading profile..."}</span>
           </div>
         </div>
       ) : (
@@ -446,10 +497,48 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarPreview || profile.avatar} />
-                  <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
-                </Avatar>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Avatar 
+                        className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          console.log('Avatar clicked - Debug info:')
+                          console.log('fullImagePreview:', fullImagePreview ? 'exists' : 'not set')
+                          console.log('avatarPreview:', avatarPreview ? 'exists' : 'not set')
+                          console.log('profile.avatar:', profile.avatar ? 'exists' : 'not set')
+                          console.log('profile.fullImage:', profile.fullImage ? 'exists' : 'not set')
+                          
+                          // If there's a full image available, use it for refocusing
+                          if (fullImagePreview) {
+                            console.log('Using fullImagePreview for refocusing')
+                            setTempImageSrc(fullImagePreview)
+                            setShowCropper(true)
+                          } else if (profile.fullImage) {
+                            console.log('Using profile.fullImage for refocusing')
+                            setTempImageSrc(profile.fullImage)
+                            setShowCropper(true)
+                          } else if (avatarPreview || profile.avatar) {
+                            // Fallback to avatar if no full image (for backward compatibility)
+                            console.log('Fallback to avatar for refocusing (no full image available)')
+                            setTempImageSrc(avatarPreview || profile.avatar || "")
+                            setShowCropper(true)
+                          } else {
+                            // If no avatar, trigger file upload
+                            console.log('No avatar found, triggering file upload')
+                            fileInputRef.current?.click()
+                          }
+                        }}
+                      >
+                        <AvatarImage src={avatarPreview || profile.avatar} />
+                        <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
+                      </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Click to {avatarPreview || profile.avatar ? 'adjust' : 'upload'} profile picture</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {avatarPreview && (
                   <Button
                     variant="destructive"
@@ -476,8 +565,8 @@ export default function ProfilePage() {
 
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="w-full">
-                <Crop className="h-4 w-4 mr-2" />
-                Upload & Crop Photo
+                <Camera className="h-4 w-4 mr-2" />
+                Upload & Center Photo
               </Button>
             </div>
           </CardContent>
@@ -668,6 +757,7 @@ export default function ProfilePage() {
 
       {/* Image Cropper Modal */}
       <ImageCropper
+        key={tempImageSrc}
         isOpen={showCropper}
         onClose={handleCropCancel}
         onCrop={handleCropComplete}

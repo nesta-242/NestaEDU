@@ -13,7 +13,10 @@ export async function GET(
 ) {
   try {
     const userId = getUserId(request)
+    console.log('API: Fetching exam result for user:', userId, 'exam ID:', params.id)
+    
     if (!userId) {
+      console.log('API: No user ID found in headers')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -22,9 +25,11 @@ export async function GET(
     const result = await prisma.examResult.findFirst({
       where: { 
         id: examId,
-        userId 
+        user_id: userId 
       },
     })
+
+    console.log('API: Database query result:', result ? 'Found' : 'Not found')
 
     if (!result) {
       return NextResponse.json({ error: 'Exam result not found' }, { status: 404 })
@@ -39,15 +44,17 @@ export async function GET(
       }
     }
 
+    console.log('API: Extracted question results count:', questionResults.length)
+
     // Return the result with extracted question results
     return NextResponse.json({
       ...result,
       questionResults
     })
   } catch (error) {
-    console.error('Error fetching exam result:', error)
+    console.error('API: Error fetching exam result:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

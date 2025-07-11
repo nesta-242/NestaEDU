@@ -21,7 +21,8 @@ export function AppHeader({ title }: AppHeaderProps) {
       try {
         const profile = localStorage.getItem("userProfile")
         if (profile) {
-          setUserProfile(JSON.parse(profile))
+          const parsedProfile = JSON.parse(profile)
+          setUserProfile(parsedProfile)
         }
       } catch (error) {
         console.error("Failed to load user profile from localStorage", error)
@@ -47,13 +48,9 @@ export function AppHeader({ title }: AppHeaderProps) {
 
     window.addEventListener("profileUpdated", handleProfileUpdate)
 
-    // Check for updates periodically (fallback)
-    const interval = setInterval(loadUserData, 1000)
-
     return () => {
       window.removeEventListener("storage", handleStorageChange)
       window.removeEventListener("profileUpdated", handleProfileUpdate)
-      clearInterval(interval)
     }
   }, [])
 

@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   // Handle API routes that need authentication
   if (request.nextUrl.pathname.startsWith('/api/user/profile') || 
       request.nextUrl.pathname.startsWith('/api/chat-sessions') ||
-      request.nextUrl.pathname.startsWith('/api/exam-results')) {
+      request.nextUrl.pathname.startsWith('/api/exam-results') ||
+      request.nextUrl.pathname.startsWith('/api/grade-exam')) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -26,6 +26,7 @@ import {
   MessageSquare
 } from "lucide-react"
 import Link from "next/link"
+import { capitalizeSubject } from "@/lib/utils"
 
 interface ChatSession {
   id: string
@@ -86,6 +87,22 @@ export default function DashboardPage() {
   const [showAllExams, setShowAllExams] = useState(false)
   const router = useRouter()
 
+  // Function to map route parameter subjects to display names
+  const getSubjectDisplayName = (subjectRoute: string) => {
+    const subjectMap: { [key: string]: string } = {
+      'bjc-math': 'BJC Mathematics',
+      'bjc-general-science': 'BJC General Science',
+      'bjc-health-science': 'BJC Health Science',
+      'bgcse-math': 'BGCSE Mathematics',
+      'bgcse-chemistry': 'BGCSE Chemistry',
+      'bgcse-physics': 'BGCSE Physics',
+      'bgcse-biology': 'BGCSE Biology',
+      'bgcse-combined-science': 'BGCSE Combined Science'
+    }
+    return subjectMap[subjectRoute] || subjectRoute
+  }
+
+
   // Helper function to get the current week's date range (Sunday to Saturday)
   const getCurrentWeekRange = () => {
     const now = new Date()
@@ -107,9 +124,11 @@ export default function DashboardPage() {
       const month = date.toLocaleDateString('en-US', { month: 'long' })
       const day = date.getDate()
       const suffix = getDaySuffix(day)
-      return `${month} ${day}${suffix}`
+      return { month, day, suffix }
     }
-    return `(${formatDate(startOfWeek)} to ${formatDate(endOfWeek)})`
+    const startDate = formatDate(startOfWeek)
+    const endDate = formatDate(endOfWeek)
+    return { startDate, endDate }
   }
 
   // Helper function to get day suffix (1st, 2nd, 3rd, etc.)
@@ -157,9 +176,9 @@ export default function DashboardPage() {
             subject: session.subject,
             topic: session.topic || '',
             title: session.title || 'Conversation',
-            lastMessage: session.lastMessage || '',
-            timestamp: session.updatedAt,
-            messageCount: session.messageCount || 0,
+            lastMessage: session.last_message || '',
+            timestamp: session.updated_at,
+            messageCount: session.message_count || 0,
           }))
         }
 
@@ -170,13 +189,13 @@ export default function DashboardPage() {
           const results = await examRes.json()
           examResults = results.map((result: any) => ({
             id: result.id,
-            subject: result.subject,
+            subject: getSubjectDisplayName(result.subject), // Convert route parameter to display name
             score: result.score,
-            maxScore: result.maxScore,
+            maxScore: result.max_score,
             percentage: result.percentage,
-            totalQuestions: result.totalQuestions,
-            timeSpent: result.timeSpent || 0,
-            date: result.createdAt,
+            totalQuestions: result.total_questions,
+            timeSpent: result.time_spent || 0,
+            date: result.created_at,
           }))
         }
 
@@ -559,7 +578,7 @@ export default function DashboardPage() {
                   <span>Most Active Subject</span>
                   <span className="font-medium">
                     {stats.subjectDistribution.length > 0 
-                      ? stats.subjectDistribution[0].subject 
+                      ? capitalizeSubject(stats.subjectDistribution[0].subject) 
                       : 'None yet'
                     }
                   </span>
@@ -608,8 +627,8 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <p className="font-medium text-sm group-hover:text-primary transition-colors">{session.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {session.subject}
+                          <Badge variant="outline" className="text-xs">
+                            {capitalizeSubject(session.subject)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{session.messageCount} messages</span>
                         </div>
@@ -660,7 +679,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-3">
                       {getScoreIcon(exam.percentage)}
                       <div>
-                        <p className="font-medium text-sm capitalize">{exam.subject}</p>
+                        <p className="font-medium text-sm">{capitalizeSubject(exam.subject)}</p>
                         <p className="text-xs text-muted-foreground">
                           {exam.score}/{exam.maxScore} points
                         </p>
@@ -705,7 +724,16 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Weekly Activity {getWeekRangeDisplay()}
+            Weekly Activity (
+              {(() => {
+                const dateRange = getWeekRangeDisplay()
+                return (
+                  <>
+                    {dateRange.startDate.month} {dateRange.startDate.day}<sup>{dateRange.startDate.suffix}</sup> to {dateRange.endDate.month} {dateRange.endDate.day}<sup>{dateRange.endDate.suffix}</sup>
+                  </>
+                )
+              })()}
+            )
           </CardTitle>
           <CardDescription>
             <span className="inline-block w-3 h-3 bg-blue-500 rounded mr-1 align-middle"></span> Learning Sessions

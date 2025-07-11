@@ -89,35 +89,46 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Signup form submitted')
 
     if (!validateForm()) {
+      console.log('Form validation failed')
       return
     }
 
+    console.log('Form validation passed, starting signup process')
     setIsLoading(true)
 
     try {
+      const signupData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        school: formData.school,
+        gradeLevel: formData.grade,
+      }
+      
+      console.log('Sending signup request with data:', { ...signupData, password: '[HIDDEN]' })
+
       // Call the signup API
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-          school: formData.school,
-          gradeLevel: formData.grade,
-        }),
+        body: JSON.stringify(signupData),
       })
 
+      console.log('Signup response status:', response.status)
       const data = await response.json()
+      console.log('Signup response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Signup failed')
       }
+
+      console.log('Signup successful, setting up user data')
 
       // Clear any existing user data to prevent showing old cached data
       localStorage.removeItem("userProfile")
@@ -146,11 +157,14 @@ export default function SignUpPage() {
       // Set auth token cookie
       document.cookie = `auth-token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; secure; samesite=strict`
 
+      console.log('User data saved, showing success toast')
+
       toast({
         title: "Account created successfully!",
         description: "Welcome to Nesta Education. You can now start learning.",
       })
 
+      console.log('Redirecting to dashboard')
       // Redirect to dashboard
       router.push("/student/dashboard")
     } catch (error: any) {
@@ -261,54 +275,7 @@ export default function SignUpPage() {
 
             <Separator />
 
-            {/* Academic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Academic Information</h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="school">School Name</Label>
-                  <Input
-                    id="school"
-                    type="text"
-                    value={formData.school}
-                    onChange={(e) => handleInputChange("school", e.target.value)}
-                    className={errors.school ? "border-red-500" : ""}
-                  />
-                  {errors.school && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.school}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="grade">Grade Level</Label>
-                  <Select value={formData.grade} onValueChange={(value) => handleInputChange("grade", value)}>
-                    <SelectTrigger className={errors.grade ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select your grade level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7th Grade">7th Grade</SelectItem>
-                      <SelectItem value="8th Grade">8th Grade</SelectItem>
-                      <SelectItem value="9th Grade">9th Grade</SelectItem>
-                      <SelectItem value="10th Grade">10th Grade</SelectItem>
-                      <SelectItem value="11th Grade">11th Grade</SelectItem>
-                      <SelectItem value="12th Grade">12th Grade</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.grade && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.grade}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Password Section */}
+            {/* Security Section (moved up) */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Security</h3>
               <div className="space-y-2">
@@ -384,6 +351,53 @@ export default function SignUpPage() {
                     {errors.confirmPassword}
                   </p>
                 )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Academic Information (moved down) */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Academic Information</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="school">School Name</Label>
+                  <Input
+                    id="school"
+                    type="text"
+                    value={formData.school}
+                    onChange={(e) => handleInputChange("school", e.target.value)}
+                    className={errors.school ? "border-red-500" : ""}
+                  />
+                  {errors.school && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.school}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="grade">Grade Level</Label>
+                  <Select value={formData.grade} onValueChange={(value) => handleInputChange("grade", value)}>
+                    <SelectTrigger className={errors.grade ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select your grade level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7th Grade">7th Grade</SelectItem>
+                      <SelectItem value="8th Grade">8th Grade</SelectItem>
+                      <SelectItem value="9th Grade">9th Grade</SelectItem>
+                      <SelectItem value="10th Grade">10th Grade</SelectItem>
+                      <SelectItem value="11th Grade">11th Grade</SelectItem>
+                      <SelectItem value="12th Grade">12th Grade</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.grade && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.grade}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

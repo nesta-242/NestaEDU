@@ -59,7 +59,7 @@ export default function Home() {
 
         {/* ---------- FOOTER ---------- */}
         <footer className="mt-12 text-center">
-          <div className="inline-block sketch-border p-4">
+          <div className="inline-block sketch-border p-4 bg-card/80 rounded-lg">
             <p className="text-sm font-code text-muted-foreground">© 2025 Nesta Technologies</p>
           </div>
         </footer>

@@ -351,7 +351,10 @@ export function Calculator({ onClose, onFocusChange }: CalculatorProps) {
       { text: "2", action: () => inputNumber("2"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
       { text: "3", action: () => inputNumber("3"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
       { text: "0", action: () => inputNumber("0"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
-      { text: "=", action: performCalculation, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md" },
+      { text: ".", action: () => { if (!display.includes(".")) inputNumber(".") }, color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
+    ],
+    [
+      { text: "=", action: performCalculation, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md col-span-5" },
     ],
   ]
 
@@ -404,7 +407,10 @@ export function Calculator({ onClose, onFocusChange }: CalculatorProps) {
       { text: "2", action: () => inputNumber("2"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
       { text: "3", action: () => inputNumber("3"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
       { text: "0", action: () => inputNumber("0"), color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
-      { text: "=", action: performCalculation, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md" },
+      { text: ".", action: () => { if (!display.includes(".")) inputNumber(".") }, color: "bg-slate-700 hover:bg-slate-800 text-white shadow-md" },
+    ],
+    [
+      { text: "=", action: performCalculation, color: "bg-blue-600 hover:bg-blue-700 text-white shadow-md col-span-5" },
     ],
   ]
 

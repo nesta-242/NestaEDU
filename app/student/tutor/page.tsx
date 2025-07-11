@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Send, ImageIcon, CalculatorIcon, Sigma, Bot, Loader2, X, BookOpen, FlaskConical, ArrowRight } from "lucide-react"
 import { MathKeyboard } from "@/components/math-keyboard"
+import { capitalizeSubject } from "@/lib/utils"
 import { Calculator } from "@/components/calculator"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
@@ -461,7 +462,8 @@ export default function AITutorPage() {
   const getSubjectIcon = () => {
     switch (selectedSubject) {
       case "math":
-        return <BookOpen className="h-5 w-5" />
+        // Use CalculatorIcon for math
+        return <CalculatorIcon className="h-5 w-5" />
       case "science":
         return <FlaskConical className="h-5 w-5" />
       default:
@@ -523,7 +525,7 @@ export default function AITutorPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">General</SelectItem>
-                  <SelectItem value="math">Math</SelectItem>
+                  <SelectItem value="math">{capitalizeSubject("Math")}</SelectItem>
                   <SelectItem value="science">Science</SelectItem>
                 </SelectContent>
               </Select>

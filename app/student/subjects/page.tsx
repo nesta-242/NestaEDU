@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { capitalizeSubject } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 
 interface Message {
@@ -293,7 +294,7 @@ export default function SubjectsPage() {
           </p>
           <Link href={`/student/tutor?subject=${subject === "general" ? "" : subject}`}>
             <Button>
-              {subject === "general" ? "Start General Conversation" : `Start Learning ${subject.charAt(0).toUpperCase() + subject.slice(1)}`}
+              {subject === "general" ? "Start General Conversation" : `Start Learning ${capitalizeSubject(subject)}`}
             </Button>
           </Link>
         </div>
@@ -468,7 +469,7 @@ export default function SubjectsPage() {
             onClick={() => setActiveTab("math")}
             className="flex items-center gap-2 px-6 py-3"
           >
-            📐 Mathematics
+                              📐 {capitalizeSubject("Mathematics")}
           </Button>
           <Button
             variant={activeTab === "science" ? "default" : "outline"}
@@ -519,17 +520,17 @@ export default function SubjectsPage() {
             </Link>
             <Link href="/student/tutor?subject=science&topic=biology">
               <Button variant="outline" size="sm">
-                Biology
+                {capitalizeSubject("Biology")}
               </Button>
             </Link>
             <Link href="/student/tutor?subject=science&topic=chemistry">
               <Button variant="outline" size="sm">
-                Chemistry
+                {capitalizeSubject("Chemistry")}
               </Button>
             </Link>
             <Link href="/student/tutor?subject=science&topic=physics">
               <Button variant="outline" size="sm">
-                Physics
+                {capitalizeSubject("Physics")}
               </Button>
             </Link>
             <Link href="/student/tutor">

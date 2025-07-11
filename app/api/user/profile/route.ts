@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseClient()
     const { data: profile, error } = await supabase
       .from('users')
-      .select('id, email, first_name, last_name, phone, grade_level, school, avatar')
+      .select('id, email, first_name, last_name, phone, grade_level, school, avatar, full_image')
       .eq('id', userId)
       .single()
 
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       gradeLevel: profile.grade_level,
       school: profile.school,
       avatar: profile.avatar,
+      fullImage: profile.full_image,
     })
   } catch (error) {
     console.error('Error fetching user profile:', error)
@@ -79,7 +80,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { firstName, lastName, phone, gradeLevel, school, avatar } = await request.json()
+    const { firstName, lastName, phone, gradeLevel, school, avatar, fullImage } = await request.json()
 
     const supabase = createSupabaseClient()
     const { data: updatedProfile, error } = await supabase
@@ -91,10 +92,11 @@ export async function PUT(request: NextRequest) {
         grade_level: gradeLevel,
         school: school,
         avatar: avatar,
+        full_image: fullImage,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
-      .select('id, email, first_name, last_name, phone, grade_level, school, avatar')
+      .select('id, email, first_name, last_name, phone, grade_level, school, avatar, full_image')
       .single()
 
     if (error) {
@@ -114,6 +116,7 @@ export async function PUT(request: NextRequest) {
       gradeLevel: updatedProfile.grade_level,
       school: updatedProfile.school,
       avatar: updatedProfile.avatar,
+      fullImage: updatedProfile.full_image,
     })
   } catch (error) {
     console.error('Error updating user profile:', error)
