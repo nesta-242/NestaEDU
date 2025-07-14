@@ -208,7 +208,9 @@ export default function DashboardPage() {
         const practiceExams = examResults.length
         const averageScore =
           examResults.length > 0
-            ? Math.round(examResults.reduce((sum, exam) => sum + exam.percentage, 0) / examResults.length)
+            ? Math.round(
+                examResults.reduce((sum, exam) => sum + (exam.percentage > 1 ? exam.percentage : exam.percentage * 100), 0) / examResults.length
+              )
             : 0
 
         // Calculate weekly activity for current week (Sunday to Saturday)
@@ -724,16 +726,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Weekly Activity (
-              {(() => {
-                const dateRange = getWeekRangeDisplay()
-                return (
-                  <>
-                    {dateRange.startDate.month} {dateRange.startDate.day}<sup>{dateRange.startDate.suffix}</sup> to {dateRange.endDate.month} {dateRange.endDate.day}<sup>{dateRange.endDate.suffix}</sup>
-                  </>
-                )
-              })()}
-            )
+            Activity This Week
           </CardTitle>
           <CardDescription>
             <span className="inline-block w-3 h-3 bg-blue-500 rounded mr-1 align-middle"></span> Learning Sessions
@@ -742,26 +735,37 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-2 h-24 w-full">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-              <div key={i} className="flex flex-col items-center flex-1 min-w-0">
-                {/* Stacked bar: chat (bottom, blue), exam (top, purple) */}
-                <div className="flex flex-col-reverse h-20 w-full">
-                  <div
-                    className="bg-blue-500 rounded-t"
-                    style={{ height: `${(stats.weeklyChatActivity?.[i] || 0) * 12}px`, minHeight: 2 }}
-                    title={`Learning Sessions: ${stats.weeklyChatActivity?.[i] || 0}`}
-                  />
-                  <div
-                    className="bg-purple-500 rounded-b"
-                    style={{ height: `${(stats.weeklyExamActivity?.[i] || 0) * 12}px`, minHeight: 2 }}
-                    title={`Practice Exams: ${stats.weeklyExamActivity?.[i] || 0}`}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground mt-1 truncate">
-                  {day}
-                </span>
-              </div>
-            ))}
+            {(() => {
+              // Get the dates for the current week (Sunday to Saturday)
+              const { startOfWeek } = getCurrentWeekRange();
+              const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              return days.map((day, i) => {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                const label = `${day} (${date.getMonth() + 1}/${date.getDate()})`;
+                return (
+                  <div key={i} className="flex flex-col items-center flex-1 min-w-0">
+                    {/* Stacked bar: chat (bottom, blue), exam (top, purple) */}
+                    <div className="flex flex-col-reverse h-20 w-full">
+                      <div
+                        className="bg-blue-500 rounded-t"
+                        style={{ height: `${(stats.weeklyChatActivity?.[i] || 0) * 12}px`, minHeight: 2 }}
+                        title={`Learning Sessions: ${stats.weeklyChatActivity?.[i] || 0}`}
+                      />
+                      <div
+                        className="bg-purple-500 rounded-b"
+                        style={{ height: `${(stats.weeklyExamActivity?.[i] || 0) * 12}px`, minHeight: 2 }}
+                        title={`Practice Exams: ${stats.weeklyExamActivity?.[i] || 0}`}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1 truncate flex flex-col items-center">
+                      <span className="block sm:inline">{day}</span>
+                      <span className="block sm:inline">{date.getMonth() + 1}/{date.getDate()}</span>
+                    </span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </CardContent>
       </Card>

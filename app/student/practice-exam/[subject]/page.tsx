@@ -422,6 +422,8 @@ export default function ExamPage() {
 
       if (saveResponse.ok) {
         console.log("Saved exam result to database")
+        // Dispatch event to update dashboard and other listeners
+        window.dispatchEvent(new Event("chatSessionUpdated"))
       } else {
         console.error("Failed to save exam result to database")
       }
@@ -470,20 +472,7 @@ export default function ExamPage() {
           <CardContent className="p-8">
             <div className="text-center space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-center">
-                  <div className="relative">
-                    <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
-                    <div 
-                      className="absolute top-0 left-0 w-16 h-16 border-4 border-primary rounded-full"
-                      style={{
-                        clipPath: `polygon(50% 50%, 50% 0%, ${50 + (loadingProgress / 100) * 50}% 0%, ${50 + (loadingProgress / 100) * 50}% ${50 - (loadingProgress / 100) * 50}%, 50% 50%)`
-                      }}
-                    ></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-sm font-medium">{Math.round(loadingProgress)}%</span>
-                    </div>
-                  </div>
-                </div>
+                {/* Removed circular percentage indicator */}
                 <div>
                   <p className="text-lg font-medium">Generating your {examInfo.title} practice exam...</p>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -491,7 +480,6 @@ export default function ExamPage() {
                   </p>
                 </div>
               </div>
-              
               {/* Progress Bar */}
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
@@ -632,6 +620,9 @@ export default function ExamPage() {
     if (personalizedFeedback) {
       // Enhanced personalization to speak directly to the student
       personalizedFeedback = personalizedFeedback
+        // Replace template variables with actual first name
+        .replace(/\$\{firstName\}/g, firstName)
+        .replace(/\$\[firstName\]/g, firstName)
         // Replace third-person references with direct address
         .replace(/\bThe student\b/gi, firstName)
         .replace(/\bthe student\b/gi, firstName)
@@ -717,11 +708,11 @@ export default function ExamPage() {
     }))
     
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 max-w-4xl mx-auto px-2 pt-6 sm:pt-10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Exam Results</h1>
-            <p className="text-muted-foreground">{examInfo.title} Practice Exam Results</p>
+            <h1 className="text-2xl font-bold tracking-tight leading-tight mb-1">Exam Results</h1>
+            <p className="text-muted-foreground text-base leading-snug">{examInfo.title} Practice Exam Results</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={generateExam} variant="outline">
@@ -986,7 +977,8 @@ export default function ExamPage() {
             Previous
           </Button>
           <Button
-            variant="outline"
+            // Highlighted: black in light mode, white in dark mode
+            className="bg-black text-white dark:bg-white dark:text-black border-black dark:border-white border"
             onClick={() => setCurrentQuestion(Math.min(examData.questions.length - 1, currentQuestion + 1))}
             disabled={currentQuestion === examData.questions.length - 1}
           >

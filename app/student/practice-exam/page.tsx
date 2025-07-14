@@ -515,19 +515,8 @@ export default function PracticeExamPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
-      <Card>
-        <CardContent className="p-8 text-center">
-          <h1 className="text-3xl font-bold">Practice Exams</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
-            Test your knowledge with comprehensive practice exams designed to help you prepare for BJC and BGCSE
-            examinations. Choose from different subjects and difficulty levels.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Button group for switching views */}
-      <div className="flex justify-center gap-4 mt-4">
+    <div className="overflow-x-hidden w-full">
+      <div className="flex justify-center gap-4 mt-4 mb-6">
         <Button
           variant={activeTab === "new-exam" ? "default" : "outline"}
           size="lg"
@@ -542,11 +531,9 @@ export default function PracticeExamPage() {
           className="flex items-center gap-2 text-lg"
           onClick={() => setActiveTab("past-exams")}
         >
-          <span role="img" aria-label="Past Exams">📜</span> Past Exams ({examResults.length})
+          <span role="img" aria-label="Past Exams">📜</span> Past Exams
         </Button>
       </div>
-
-      {/* Conditionally render sections */}
       <div className="mt-6">
         {activeTab === "new-exam" && renderNewExamTab()}
         {activeTab === "past-exams" && renderPastExamsTab()}

@@ -203,7 +203,7 @@ export default function SignUpPage() {
           Back to Sign In
         </Button>
         
-        <CardHeader className="text-center">
+        <CardHeader className="text-center mt-14 sm:mt-0">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <PenTool className="h-8 w-8 text-primary" />

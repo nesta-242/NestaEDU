@@ -14,10 +14,17 @@ export default function Home() {
           <h1 className="text-4xl font-bold tracking-tight font-handwriting sm:text-5xl md:text-6xl mb-4">
             Nesta Education
           </h1>
-          <div className="mb-4 flex items-center gap-2 text-lg text-muted-foreground font-code">
-            <span>✏️ learn through discovery</span>
-            <span>•</span>
-            <span>practice with precision 📐</span>
+          <div className="mb-4 text-lg text-muted-foreground font-code">
+            {/* Mobile: stacked, Desktop: inline */}
+            <div className="block sm:hidden">
+              <div>✏️ learn through discovery.</div>
+              <div>📐 practice with precision.</div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span>✏️ learn through discovery</span>
+              <span>•</span>
+              <span>practice with precision 📐</span>
+            </div>
           </div>
 
           <p className="text-base text-muted-foreground font-notebook max-w-2xl">

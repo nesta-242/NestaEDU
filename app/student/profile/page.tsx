@@ -55,8 +55,9 @@ export default function ProfilePage() {
     school: "",
   })
   const [originalAvatar, setOriginalAvatar] = useState<string>("")
-  const [originalTheme, setOriginalTheme] = useState<string>("system")
+  const [originalTheme, setOriginalTheme] = useState<string>("")
   const [hasThemeChanged, setHasThemeChanged] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState<string>("")
   const saveSuccessfulRef = useRef(false)
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({})
   const [isLoading, setIsLoading] = useState(true) // Start with loading true
@@ -68,7 +69,8 @@ export default function ProfilePage() {
   const [tempImageSrc, setTempImageSrc] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-  const { theme, setTheme } = useTheme()
+  // Only call useTheme once:
+  const { theme, setTheme, resolvedTheme } = useTheme()
   const router = useRouter()
 
   // Load profile data on component mount
@@ -174,6 +176,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (theme && !originalTheme) {
       setOriginalTheme(theme)
+      setCurrentTheme(theme)
     }
   }, [theme, originalTheme])
 
@@ -181,11 +184,11 @@ export default function ProfilePage() {
   useEffect(() => {
     return () => {
       // If there are unsaved theme changes and save wasn't successful, revert to original theme
-      if (hasThemeChanged && !saveSuccessfulRef.current) {
+      if (hasThemeChanged && !saveSuccessfulRef.current && originalTheme) {
         setTheme(originalTheme)
       }
     }
-  }, [hasThemeChanged, originalTheme, setTheme, theme])
+  }, [hasThemeChanged, originalTheme, setTheme])
 
   const handleInputChange = (field: keyof UserProfile, value: string) => {
     setProfile((prev) => ({
@@ -195,8 +198,39 @@ export default function ProfilePage() {
   }
 
   const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme)
+    console.log('Changing theme from', currentTheme, 'to', newTheme) // Debug log
+    
+    // Update our local state
+    setCurrentTheme(newTheme)
     setHasThemeChanged(true)
+    
+    // Simple theme application that always works
+    const htmlElement = document.documentElement
+    
+    // Clear all theme classes first
+    htmlElement.classList.remove('light', 'dark')
+    
+    if (newTheme === 'light') {
+      htmlElement.classList.add('light')
+      localStorage.setItem('theme', 'light')
+    } else if (newTheme === 'dark') {
+      htmlElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else if (newTheme === 'system') {
+      localStorage.setItem('theme', 'system')
+      // Check system preference
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        htmlElement.classList.add('dark')
+      } else {
+        htmlElement.classList.add('light')
+      }
+    }
+    
+    // Also update next-themes for compatibility
+    setTheme(newTheme)
+    
+    console.log('Theme change applied:', newTheme)
+    console.log('HTML classes after change:', htmlElement.classList.toString())
   }
 
   // Check if any changes have been made
@@ -691,7 +725,7 @@ export default function ProfilePage() {
                 <Label>Theme</Label>
                 <div className="grid grid-cols-3 gap-2">
                   <Button
-                    variant={theme === "light" ? "default" : "outline"}
+                    variant={currentTheme === "light" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleThemeChange("light")}
                     className="justify-start"
@@ -700,7 +734,7 @@ export default function ProfilePage() {
                     Light
                   </Button>
                   <Button
-                    variant={theme === "dark" ? "default" : "outline"}
+                    variant={currentTheme === "dark" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleThemeChange("dark")}
                     className="justify-start"
@@ -709,7 +743,7 @@ export default function ProfilePage() {
                     Dark
                   </Button>
                   <Button
-                    variant={theme === "system" ? "default" : "outline"}
+                    variant={currentTheme === "system" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleThemeChange("system")}
                     className="justify-start"
