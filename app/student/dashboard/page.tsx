@@ -50,7 +50,6 @@ interface ExamResult {
 
 interface DashboardStats {
   learningSessions: number
-  topicsExplored: number
   recentSessions: ChatSession[]
   practiceExams: number
   averageScore: number
@@ -66,7 +65,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats & { examsThisWeek: number; sessionsThisWeek: number; weeklyChatActivity: number[]; weeklyExamActivity: number[] }>(
     {
       learningSessions: 0,
-      topicsExplored: 0,
       recentSessions: [],
       practiceExams: 0,
       averageScore: 0,
@@ -200,17 +198,13 @@ export default function DashboardPage() {
         }
 
         const learningSessions = chatHistory.length
-        const uniqueTopics = new Set(chatHistory.map((session) => `${session.subject}-${session.topic}`))
-        const topicsExplored = uniqueTopics.size
         const recentSessions = chatHistory
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .slice(0, 5)
         const practiceExams = examResults.length
         const averageScore =
           examResults.length > 0
-            ? Math.round(
-                examResults.reduce((sum, exam) => sum + (exam.percentage > 1 ? exam.percentage : exam.percentage * 100), 0) / examResults.length
-              )
+            ? Math.round(examResults.reduce((sum, exam) => sum + exam.percentage, 0) / examResults.length)
             : 0
 
         // Calculate weekly activity for current week (Sunday to Saturday)
@@ -335,7 +329,6 @@ export default function DashboardPage() {
         
         setStats({
           learningSessions,
-          topicsExplored,
           recentSessions,
           practiceExams,
           averageScore,
@@ -354,7 +347,6 @@ export default function DashboardPage() {
         console.error('Error fetching dashboard data:', error)
         setStats({
           learningSessions: 0,
-          topicsExplored: 0,
           recentSessions: [],
           practiceExams: 0,
           averageScore: 0,
@@ -501,26 +493,26 @@ export default function DashboardPage() {
 
         <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
+            <CardTitle className="text-sm font-medium">Tutoring Sessions This Week</CardTitle>
             <Calendar className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.sessionsThisWeek + stats.examsThisWeek}</div>
+            <div className="text-2xl font-bold">{stats.sessionsThisWeek}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.sessionsThisWeek} sessions, {stats.examsThisWeek} exams
+              {stats.learningSessions} total tutoring sessions
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow active:scale-95 md:active:scale-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Practice Exams This Week</CardTitle>
             <MessageSquare className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.learningSessions}</div>
+            <div className="text-2xl font-bold">{stats.examsThisWeek}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.topicsExplored} topics explored
+              {stats.practiceExams} total practice exams
             </p>
           </CardContent>
         </Card>
@@ -538,67 +530,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Learning Insights Card */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <h4 className="font-medium">Quick Stats</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>Learning Sessions</span>
-                  <span className="font-medium">{stats.learningSessions}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Practice Exams</span>
-                  <span className="font-medium">{stats.practiceExams}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Topics Explored</span>
-                  <span className="font-medium">{stats.topicsExplored}</span>
-                </div>
-                {getDaysSinceLastSession() !== null && (
-                  <div className="flex items-center justify-between">
-                    <span>Days Since Last Session</span>
-                    <span className="font-medium">{getDaysSinceLastSession()}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <h4 className="font-medium">Learning Insights</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>Learning Trend</span>
-                  <Badge variant={stats.improvementTrend === 'up' ? 'default' : stats.improvementTrend === 'down' ? 'destructive' : 'secondary'}>
-                    {stats.improvementTrend === 'up' ? '↗ Improving' : stats.improvementTrend === 'down' ? '↘ Declining' : '→ Stable'}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Most Active Subject</span>
-                  <span className="font-medium">
-                    {stats.subjectDistribution.length > 0 
-                      ? capitalizeSubject(stats.subjectDistribution[0].subject) 
-                      : 'None yet'
-                    }
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Best Exam Score</span>
-                  <span className="font-medium">
-                    {stats.examResults.length > 0 
-                      ? `${Math.max(...stats.examResults.map(e => e.percentage))}%` 
-                      : 'No exams yet'
-                    }
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Recent Activity and Performance */}
       <div className="grid gap-6 md:grid-cols-2">
