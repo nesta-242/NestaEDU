@@ -174,6 +174,7 @@ export default function DashboardPage() {
         }
         const data = await res.json()
         console.log('Fetched user profile:', data.user)
+        console.log('Avatar in fetched user:', data.user?.avatar)
         setUserProfile(data.user)
         localStorage.setItem('userProfile', JSON.stringify(data.user))
         
@@ -193,10 +194,18 @@ export default function DashboardPage() {
       console.log('Profile update event received:', customEvent.detail)
       console.log('Current userProfile before update:', userProfile)
       console.log('Avatar in update event:', customEvent.detail?.avatar)
-      setUserProfile(customEvent.detail)
+      
+      // Ensure we preserve all fields including avatar
+      const updatedProfile = {
+        ...customEvent.detail,
+        avatar: customEvent.detail?.avatar || userProfile?.avatar || null
+      }
+      
+      setUserProfile(updatedProfile)
       // Also update localStorage to ensure consistency
-      localStorage.setItem('userProfile', JSON.stringify(customEvent.detail))
-      console.log('Profile updated, new userProfile should be:', customEvent.detail)
+      localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
+      console.log('Profile updated, new userProfile should be:', updatedProfile)
+      console.log('Avatar in updatedProfile:', updatedProfile.avatar)
     }
 
     // Listen for avatar refresh events
@@ -476,7 +485,7 @@ export default function DashboardPage() {
     }
   }, [router])
 
-  // Debug effect to track userProfile changes
+  // Debug effect to monitor userProfile changes
   useEffect(() => {
     console.log('userProfile state changed:', userProfile)
     console.log('Avatar in userProfile:', userProfile?.avatar)
@@ -575,10 +584,13 @@ export default function DashboardPage() {
                   src={getAvatarUrl(userProfile?.avatar)} 
                   onError={(e) => {
                     console.log('Avatar image failed to load, falling back to initials')
+                    console.log('Attempted src:', getAvatarUrl(userProfile?.avatar))
+                    console.log('userProfile.avatar:', userProfile?.avatar)
                     e.currentTarget.style.display = 'none'
                   }}
                   onLoad={() => {
                     console.log('Avatar image loaded successfully')
+                    console.log('Avatar data is valid, length:', userProfile?.avatar?.length)
                   }}
                 />
                 <AvatarFallback>{getUserInitials()}</AvatarFallback>

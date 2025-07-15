@@ -7,12 +7,22 @@ export function cn(...inputs: ClassValue[]) {
 
 // Utility function to add cache-busting parameters to avatar URLs
 export function getAvatarUrl(avatarData: string | null | undefined): string {
-  if (!avatarData || !avatarData.startsWith('data:image/')) {
+  if (!avatarData) {
     return ""
   }
-  // For data URLs, don't add timestamp parameters as they can cause issues
-  // The cache-busting is handled by the component key instead
-  return avatarData
+  
+  // If it's already a data URL, return it as is
+  if (avatarData.startsWith('data:image/')) {
+    return avatarData
+  }
+  
+  // If it's a regular URL, add cache-busting parameter
+  if (avatarData.startsWith('http://') || avatarData.startsWith('https://')) {
+    return `${avatarData}?t=${Date.now()}`
+  }
+  
+  // For any other format, return empty string
+  return ""
 }
 
 // Utility function to generate a unique key for avatar components
@@ -30,11 +40,12 @@ export function forceAvatarRefresh(): void {
   avatarImages.forEach(img => {
     const currentSrc = img.getAttribute('src')
     if (currentSrc && currentSrc.includes('data:image/')) {
-      // Temporarily clear the src to force a reload
+      // For data URLs, we need to force a re-render by temporarily clearing and resetting
+      const originalSrc = currentSrc
       img.setAttribute('src', '')
-      // Set it back with a timestamp
+      // Set it back immediately to force browser to reload
       setTimeout(() => {
-        img.setAttribute('src', `${currentSrc}?t=${Date.now()}`)
+        img.setAttribute('src', originalSrc)
       }, 10)
     }
   })

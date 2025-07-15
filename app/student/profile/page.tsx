@@ -88,6 +88,8 @@ export default function ProfilePage() {
         const res = await fetch('/api/user/profile')
         if (res.ok) {
           const user = await res.json()
+          console.log('Fetched profile from API:', user)
+          console.log('Avatar in API response:', user.avatar)
           
           // Ensure all fields are strings, not null
           const sanitizedUser = {
@@ -102,15 +104,20 @@ export default function ProfilePage() {
             fullImage: user.fullImage || ""
           }
           
+          console.log('Sanitized user profile:', sanitizedUser)
+          console.log('Avatar in sanitized user:', sanitizedUser.avatar)
+          
           setProfile(sanitizedUser)
           setOriginalProfile(sanitizedUser)
           localStorage.setItem('userProfile', JSON.stringify(sanitizedUser))
           
           // Restore existing avatar to preview if it exists
           if (sanitizedUser.avatar) {
+            console.log('Setting avatar preview from API data')
             setAvatarPreview(sanitizedUser.avatar)
             setOriginalAvatar(sanitizedUser.avatar)
           } else {
+            console.log('No avatar in API response, clearing preview')
             setAvatarPreview("")
             setOriginalAvatar("")
           }
@@ -122,10 +129,13 @@ export default function ProfilePage() {
             setFullImagePreview("")
           }
         } else {
+          console.log('API failed, falling back to localStorage')
           // Only fallback to localStorage if API actually fails
           const savedProfile = localStorage.getItem('userProfile')
           if (savedProfile) {
             const parsedProfile = JSON.parse(savedProfile)
+            console.log('Loaded profile from localStorage:', parsedProfile)
+            console.log('Avatar in localStorage:', parsedProfile.avatar)
             
             // Ensure all fields are strings, not null
             const sanitizedProfile = {
@@ -143,6 +153,7 @@ export default function ProfilePage() {
             setProfile(sanitizedProfile)
             setOriginalProfile(sanitizedProfile)
             if (sanitizedProfile.avatar) {
+              console.log('Setting avatar preview from localStorage')
               setAvatarPreview(sanitizedProfile.avatar)
               setOriginalAvatar(sanitizedProfile.avatar)
             }
@@ -158,6 +169,7 @@ export default function ProfilePage() {
         if (savedProfile) {
           try {
             const parsedProfile = JSON.parse(savedProfile)
+            console.log('Error fallback - loaded from localStorage:', parsedProfile)
             setProfile(parsedProfile)
             setOriginalProfile(parsedProfile)
             if (parsedProfile.avatar) {
@@ -186,6 +198,12 @@ export default function ProfilePage() {
       setCurrentTheme(theme)
     }
   }, [theme, originalTheme])
+
+  // Debug effect to monitor profile changes
+  useEffect(() => {
+    console.log('Profile state changed:', profile)
+    console.log('Avatar in profile:', profile.avatar)
+  }, [profile])
 
   // Debug effect to monitor avatarPreview changes
   useEffect(() => {
