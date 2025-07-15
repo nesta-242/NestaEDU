@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getPrisma, disconnectPrisma } from '@/lib/db'
 
-// Get user ID from request headers (set by middleware)
-function getUserId(request: NextRequest): string | null {
-  return request.headers.get('x-user-id')
-}
+export const dynamic = 'force-dynamic'
 
 // GET - Retrieve detailed exam result by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let prisma = null
+  
   try {
-    const userId = getUserId(request)
+    const userId = request.headers.get('x-user-id')
     console.log('API: Fetching exam result for user:', userId, 'exam ID:', params.id)
     
     if (!userId) {
@@ -21,6 +20,9 @@ export async function GET(
     }
 
     const examId = params.id
+
+    // Get a fresh Prisma client
+    prisma = await getPrisma()
 
     const result = await prisma.examResult.findFirst({
       where: { 
@@ -57,5 +59,10 @@ export async function GET(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
+  } finally {
+    // Always disconnect the client
+    if (prisma) {
+      await disconnectPrisma(prisma)
+    }
   }
 } 

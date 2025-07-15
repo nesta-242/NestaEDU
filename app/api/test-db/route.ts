@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getPrisma, disconnectPrisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
+  let prisma = null
+  
   try {
     console.log('Testing database connection...')
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set')
+    
+    // Get a fresh Prisma client
+    prisma = await getPrisma()
     
     // Test basic database connection
     const result = await prisma.$queryRaw`SELECT 1 as test`
@@ -31,5 +36,10 @@ export async function GET(request: NextRequest) {
       environment: process.env.NODE_ENV,
       hasDatabaseUrl: !!process.env.DATABASE_URL
     }, { status: 500 })
+  } finally {
+    // Always disconnect the client
+    if (prisma) {
+      await disconnectPrisma(prisma)
+    }
   }
 } 
