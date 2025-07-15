@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MobileNav } from "@/components/mobile-nav"
 import { ExamSafeLink } from "@/components/exam-safe-link"
-import { getAvatarUrl, getAvatarKey, forceAvatarRefresh } from "@/lib/utils"
 
 interface AppHeaderProps {
   title?: string
@@ -32,49 +31,32 @@ export function AppHeader({ title }: AppHeaderProps) {
 
     loadUserData()
 
-    // Force refresh avatar images after loading profile
-    forceAvatarRefresh()
-
-    // Listen for storage changes to update avatar in real-time
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "userProfile") {
-        loadUserData()
-      }
-    }
-
-    // Also listen for custom events when localStorage is updated from the same tab
+    // Listen for profile updates
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
       console.log('Profile update event received in header:', customEvent.detail)
-      setUserProfile(customEvent.detail)
-      // Force avatar refresh to ensure immediate visual update
-      forceAvatarRefresh()
+      
+      // Force a state update to trigger re-render
+      setUserProfile(null)
+      setTimeout(() => {
+        setUserProfile(customEvent.detail)
+      }, 10)
     }
 
-    // Listen for avatar refresh events
-    const handleAvatarRefresh = (e: Event) => {
-      console.log('Avatar refresh event received in header, forcing re-render')
-      // Force a re-render by updating the state with a new object
-      setUserProfile((prev: any) => {
-        const newProfile = { ...prev }
-        // Add a timestamp to force React to see it as a new object
-        newProfile._lastUpdate = Date.now()
-        return newProfile
-      })
-    }
-
-    window.addEventListener("storage", handleStorageChange)
     window.addEventListener("profileUpdated", handleProfileUpdate)
-    window.addEventListener("avatarRefresh", handleAvatarRefresh)
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange)
       window.removeEventListener("profileUpdated", handleProfileUpdate)
-      window.removeEventListener("avatarRefresh", handleAvatarRefresh)
     }
   }, [])
 
-
+  // Debug effect to monitor userProfile changes
+  useEffect(() => {
+    console.log('Header userProfile state changed:', userProfile)
+    console.log('Header avatar in userProfile:', userProfile?.avatar)
+    console.log('Header avatar type:', typeof userProfile?.avatar)
+    console.log('Header avatar length:', userProfile?.avatar?.length)
+  }, [userProfile])
 
   const getInitials = () => {
     if (userProfile?.firstName && userProfile?.lastName) {
@@ -100,14 +82,17 @@ export function AppHeader({ title }: AppHeaderProps) {
       <div className="ml-auto flex items-center gap-2">
         <ExamSafeLink href="/student/profile">
           <Button variant="ghost" size="icon" className="rounded-full p-1">
-            <Avatar 
-              className="h-8 w-8" 
-              key={`header-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}-${userProfile?._lastUpdate || Date.now()}`}
-              data-avatar-key={`header-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}`}
-            >
+            <Avatar className="h-8 w-8" key={`header-avatar-${userProfile?.avatar ? userProfile.avatar.substring(0, 50) : 'no-avatar'}`}>
               <AvatarImage
-                src={getAvatarUrl(userProfile?.avatar)}
+                src={userProfile?.avatar}
                 alt={getUserName()}
+                onError={(e) => {
+                  console.log('Header avatar image failed to load:', userProfile?.avatar)
+                  e.currentTarget.style.display = 'none'
+                }}
+                onLoad={() => {
+                  console.log('Header avatar image loaded successfully')
+                }}
               />
               <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
             </Avatar>

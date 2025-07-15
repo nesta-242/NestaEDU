@@ -16,7 +16,6 @@ import { useTheme } from "next-themes"
 import { Camera, X, Sun, Moon, Monitor, User, Mail, Phone, GraduationCap, Loader2, Crop } from "lucide-react"
 import { ImageCropper } from "@/components/image-cropper"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { getAvatarUrl, getAvatarKey, forceAvatarRefresh } from "@/lib/utils"
 
 interface UserProfile {
   firstName: string
@@ -55,43 +54,67 @@ export default function ProfilePage() {
     gradeLevel: "",
     school: "",
   })
-  const [originalAvatar, setOriginalAvatar] = useState<string>("")
   const [originalTheme, setOriginalTheme] = useState<string>("")
   const [hasThemeChanged, setHasThemeChanged] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<string>("")
   const saveSuccessfulRef = useRef(false)
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({})
-  const [isLoading, setIsLoading] = useState(true) // Start with loading true
-  const [isSaving, setIsSaving] = useState(false) // Separate state for saving
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string>("")
   const [fullImagePreview, setFullImagePreview] = useState<string>("") // Store full image for refocusing
   const [showCropper, setShowCropper] = useState(false)
   const [tempImageSrc, setTempImageSrc] = useState<string>("")
+  const [hasUnsavedAvatarChanges, setHasUnsavedAvatarChanges] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-  // Only call useTheme once:
   const { theme, setTheme, resolvedTheme } = useTheme()
   const router = useRouter()
 
   // Load profile data on component mount
   useEffect(() => {
-    // Clear browser image cache on page load
-    if (typeof window !== 'undefined') {
-      // Force refresh any existing avatar images
-      forceAvatarRefresh()
+    console.log('Profile page: Starting initialization...')
+    
+    // 1. Load from localStorage first
+    const savedProfile = localStorage.getItem('userProfile')
+    let parsedProfile: UserProfile | null = null;
+    if (savedProfile) {
+      try {
+        parsedProfile = JSON.parse(savedProfile)
+        if (parsedProfile) {
+          console.log('Profile page: Loaded from localStorage:', {
+            avatar: parsedProfile.avatar ? 'exists' : 'null',
+            avatarLength: parsedProfile.avatar?.length
+          })
+          setProfile(parsedProfile)
+          setOriginalProfile(parsedProfile)
+          setAvatarPreview(parsedProfile.avatar || "")
+          setFullImagePreview(parsedProfile.fullImage || "")
+        }
+      } catch (e) {
+        console.error('Profile page: Error parsing localStorage data:', e)
+      }
+    } else {
+      console.log('Profile page: No localStorage data found')
     }
     
+    // 2. Only fetch from API if we don't have localStorage data
     const fetchProfile = async () => {
-      setIsLoading(true) // Ensure loading state is set
+      if (parsedProfile) {
+        console.log('Profile page: Using localStorage data, skipping API fetch')
+        setIsLoading(false)
+        return
+      }
+      
+      setIsLoading(true)
       try {
         const res = await fetch('/api/user/profile')
         if (res.ok) {
           const user = await res.json()
-          console.log('Fetched profile from API:', user)
-          console.log('Avatar in API response:', user.avatar)
-          
-          // Ensure all fields are strings, not null
+          console.log('Profile page: Received from API:', {
+            avatar: user.avatar ? 'exists' : 'null',
+            avatarLength: user.avatar?.length
+          })
           const sanitizedUser = {
             ...user,
             firstName: user.firstName || "",
@@ -104,92 +127,57 @@ export default function ProfilePage() {
             fullImage: user.fullImage || ""
           }
           
-          console.log('Sanitized user profile:', sanitizedUser)
-          console.log('Avatar in sanitized user:', sanitizedUser.avatar)
-          
+          console.log('Profile page: Using API data (no localStorage)')
           setProfile(sanitizedUser)
           setOriginalProfile(sanitizedUser)
+          setAvatarPreview(sanitizedUser.avatar || "")
+          setFullImagePreview(sanitizedUser.fullImage || "")
           localStorage.setItem('userProfile', JSON.stringify(sanitizedUser))
-          
-          // Restore existing avatar to preview if it exists
-          if (sanitizedUser.avatar) {
-            console.log('Setting avatar preview from API data')
-            setAvatarPreview(sanitizedUser.avatar)
-            setOriginalAvatar(sanitizedUser.avatar)
-          } else {
-            console.log('No avatar in API response, clearing preview')
-            setAvatarPreview("")
-            setOriginalAvatar("")
-          }
-          
-          // Restore full image if it exists
-          if (sanitizedUser.fullImage) {
-            setFullImagePreview(sanitizedUser.fullImage)
-          } else {
-            setFullImagePreview("")
-          }
-        } else {
-          console.log('API failed, falling back to localStorage')
-          // Only fallback to localStorage if API actually fails
-          const savedProfile = localStorage.getItem('userProfile')
-          if (savedProfile) {
-            const parsedProfile = JSON.parse(savedProfile)
-            console.log('Loaded profile from localStorage:', parsedProfile)
-            console.log('Avatar in localStorage:', parsedProfile.avatar)
-            
-            // Ensure all fields are strings, not null
-            const sanitizedProfile = {
-              ...parsedProfile,
-              firstName: parsedProfile.firstName || "",
-              lastName: parsedProfile.lastName || "",
-              email: parsedProfile.email || "",
-              phone: parsedProfile.phone || "",
-              gradeLevel: parsedProfile.gradeLevel || "",
-              school: parsedProfile.school || "",
-              avatar: parsedProfile.avatar || "",
-              fullImage: parsedProfile.fullImage || ""
-            }
-            
-            setProfile(sanitizedProfile)
-            setOriginalProfile(sanitizedProfile)
-            if (sanitizedProfile.avatar) {
-              console.log('Setting avatar preview from localStorage')
-              setAvatarPreview(sanitizedProfile.avatar)
-              setOriginalAvatar(sanitizedProfile.avatar)
-            }
-            if (sanitizedProfile.fullImage) {
-              setFullImagePreview(sanitizedProfile.fullImage)
-            }
-          }
         }
       } catch (error) {
-        console.error('Error fetching profile:', error)
-        // Fallback to localStorage on error
-        const savedProfile = localStorage.getItem('userProfile')
-        if (savedProfile) {
-          try {
-            const parsedProfile = JSON.parse(savedProfile)
-            console.log('Error fallback - loaded from localStorage:', parsedProfile)
-            setProfile(parsedProfile)
-            setOriginalProfile(parsedProfile)
-            if (parsedProfile.avatar) {
-              setAvatarPreview(parsedProfile.avatar)
-              setOriginalAvatar(parsedProfile.avatar)
-            }
-            if (parsedProfile.fullImage) {
-              setFullImagePreview(parsedProfile.fullImage)
-            }
-          } catch (parseError) {
-            console.error('Error parsing cached profile:', parseError)
-          }
-        }
+        console.error('Profile page: API fetch failed:', error)
       } finally {
         setIsLoading(false)
       }
     }
-
     fetchProfile()
-  }, [])
+    
+    // 3. Listen for profileUpdated event
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const updated = customEvent.detail
+      setProfile(updated)
+      setOriginalProfile(updated)
+      setAvatarPreview(updated.avatar || "")
+      setFullImagePreview(updated.fullImage || "")
+      localStorage.setItem('userProfile', JSON.stringify(updated))
+      setHasUnsavedAvatarChanges(false) // Reset unsaved changes flag on profile update
+    }
+    window.addEventListener("profileUpdated", handleProfileUpdate)
+    return () => window.removeEventListener("profileUpdated", handleProfileUpdate)
+  }, []) // Remove avatarPreview from dependencies to prevent infinite loops
+
+  // Cleanup effect to save unsaved avatar changes when unmounting
+  useEffect(() => {
+    return () => {
+      // If we have unsaved avatar changes, save them to localStorage
+      if (hasUnsavedAvatarChanges) {
+        const currentProfile = {
+          ...profile,
+          avatar: avatarPreview,
+          fullImage: fullImagePreview
+        }
+        localStorage.setItem('userProfile', JSON.stringify(currentProfile))
+        console.log('Profile page: Saved unsaved avatar changes to localStorage on unmount')
+      }
+    }
+  }, [hasUnsavedAvatarChanges, profile, avatarPreview, fullImagePreview])
+
+  // Track unsaved avatar changes
+  useEffect(() => {
+    const hasChanges = avatarPreview !== (originalProfile.avatar || "")
+    setHasUnsavedAvatarChanges(hasChanges)
+  }, [avatarPreview, originalProfile.avatar])
 
   // Initialize theme state when theme is available
   useEffect(() => {
@@ -199,87 +187,26 @@ export default function ProfilePage() {
     }
   }, [theme, originalTheme])
 
-  // Debug effect to monitor profile changes
-  useEffect(() => {
-    console.log('Profile state changed:', profile)
-    console.log('Avatar in profile:', profile.avatar)
-  }, [profile])
-
-  // Debug effect to monitor avatarPreview changes
-  useEffect(() => {
-    console.log('avatarPreview changed:', avatarPreview ? 'has value' : 'empty')
-    if (avatarPreview) {
-      console.log('avatarPreview length:', avatarPreview.length)
-      console.log('avatarPreview starts with data:image/:', avatarPreview.startsWith('data:image/'))
-    }
-  }, [avatarPreview])
-
-  // Cleanup effect to revert theme if user navigates away without saving
-  useEffect(() => {
-    return () => {
-      // If there are unsaved theme changes and save wasn't successful, revert to original theme
-      if (hasThemeChanged && !saveSuccessfulRef.current && originalTheme) {
-        setTheme(originalTheme)
-      }
-    }
-  }, [hasThemeChanged, originalTheme, setTheme])
-
   const handleInputChange = (field: keyof UserProfile, value: string) => {
-    setProfile((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
+    setProfile(prev => ({ ...prev, [field]: value }))
+    setErrors(prev => ({ ...prev, [field]: false }))
   }
 
   const handleThemeChange = (newTheme: string) => {
-    console.log('Changing theme from', currentTheme, 'to', newTheme) // Debug log
-    
-    // Update our local state
+    setTheme(newTheme)
     setCurrentTheme(newTheme)
     setHasThemeChanged(true)
-    
-    // Simple theme application that always works
-    const htmlElement = document.documentElement
-    
-    // Clear all theme classes first
-    htmlElement.classList.remove('light', 'dark')
-    
-    if (newTheme === 'light') {
-      htmlElement.classList.add('light')
-      localStorage.setItem('theme', 'light')
-    } else if (newTheme === 'dark') {
-      htmlElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else if (newTheme === 'system') {
-      localStorage.setItem('theme', 'system')
-      // Check system preference
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        htmlElement.classList.add('dark')
-      } else {
-        htmlElement.classList.add('light')
-      }
-    }
-    
-    // Also update next-themes for compatibility
-    setTheme(newTheme)
-    
-    console.log('Theme change applied:', newTheme)
-    console.log('HTML classes after change:', htmlElement.classList.toString())
   }
 
-  // Check if any changes have been made
   const hasChanges = (): boolean => {
     // Check if any profile fields have changed
-    const profileChanged = 
-      profile.firstName !== originalProfile.firstName ||
-      profile.lastName !== originalProfile.lastName ||
-      profile.email !== originalProfile.email ||
-      profile.phone !== originalProfile.phone ||
-      profile.gradeLevel !== originalProfile.gradeLevel ||
-      profile.school !== originalProfile.school
+    const profileChanged = Object.keys(profile).some(key => {
+      if (key === 'avatar') return false // Handle avatar separately
+      return profile[key as keyof UserProfile] !== originalProfile[key as keyof UserProfile]
+    })
 
-    // Check if avatar has changed - compare current preview with original avatar
-    const avatarChanged = avatarPreview !== originalAvatar
+    // Check if avatar has changed
+    const avatarChanged = avatarPreview !== originalProfile.avatar
 
     // Check if theme has changed
     const themeChanged = hasThemeChanged
@@ -292,33 +219,30 @@ export default function ProfilePage() {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
       const img = new Image()
-      
+
       img.onload = () => {
-        // Set canvas size (max 200x200 for avatar)
-        const maxSize = 200
-        let { width, height } = img
-        
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width
-            width = maxSize
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height
-            height = maxSize
-          }
-        }
-        
-        canvas.width = width
-        canvas.height = height
-        
-        // Draw and compress
-        ctx.drawImage(img, 0, 0, width, height)
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8) // 80% quality
+        // Set canvas size for avatar (200x200 is good for avatars)
+        const size = 200
+        canvas.width = size
+        canvas.height = size
+
+        // Calculate scaling to maintain aspect ratio
+        const scale = Math.max(size / img.width, size / img.height)
+        const scaledWidth = img.width * scale
+        const scaledHeight = img.height * scale
+
+        // Center the image
+        const x = (size - scaledWidth) / 2
+        const y = (size - scaledHeight) / 2
+
+        // Draw the image
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight)
+
+        // Convert to base64
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8)
         resolve(compressedDataUrl)
       }
-      
+
       img.src = URL.createObjectURL(file)
     })
   }
@@ -346,72 +270,57 @@ export default function ProfilePage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file (JPG, PNG, GIF)",
-          variant: "destructive",
-        })
-        return
-      }
+    if (!file) return
 
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please select an image smaller than 5MB",
-          variant: "destructive",
-        })
-        return
-      }
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please select an image file.',
+        variant: 'destructive',
+      })
+      return
+    }
 
-      // Clear any existing avatar data immediately
-      setAvatarPreview("")
-      setFullImagePreview("")
-      setProfile(prev => ({
-        ...prev,
-        avatar: "",
-        fullImage: ""
-      }))
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please select an image smaller than 5MB.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      // Create a temporary URL for the cropper
+      const tempUrl = URL.createObjectURL(file)
+      setTempImageSrc(tempUrl)
       
-      setAvatarFile(file)
+      // Store the full original image for later refocusing
+      const fullImageDataUrl = await storeFullImage(file)
+      setFullImagePreview(fullImageDataUrl)
+      
+      setShowCropper(true)
+    } catch (error) {
+      console.error('Error processing image:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to process image. Please try again.',
+        variant: 'destructive',
+      })
+    }
 
-      try {
-        // Create a temporary URL for the cropper
-        const tempUrl = URL.createObjectURL(file)
-        setTempImageSrc(tempUrl)
-        
-        // Store the full original image for later refocusing (no compression)
-        const fullImageDataUrl = await storeFullImage(file)
-        setFullImagePreview(fullImageDataUrl)
-        
-        setShowCropper(true)
-      } catch (error) {
-        console.error('Error processing image:', error)
-        toast({
-          title: "Error",
-          description: "Failed to process image. Please try again.",
-          variant: "destructive",
-        })
-      }
+    // Clear the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
   const handleCropComplete = (croppedImage: string) => {
-    console.log('Crop complete - Debug info:')
-    console.log('Cropped image length:', croppedImage?.length)
-    console.log('Cropped image starts with data:image/:', croppedImage?.startsWith('data:image/'))
-    console.log('Cropped image preview:', croppedImage?.substring(0, 100) + '...')
-    
+    console.log('Crop complete - cropped image length:', croppedImage?.length)
     setAvatarPreview(croppedImage)
-    // Clear the old avatar from profile state immediately
-    setProfile(prev => ({
-      ...prev,
-      avatar: "",
-      fullImage: ""
-    }))
+    setHasUnsavedAvatarChanges(true)
     setShowCropper(false)
     setTempImageSrc("")
     
@@ -421,15 +330,14 @@ export default function ProfilePage() {
     }
     
     toast({
-      title: "Image centered",
-      description: "Your profile picture has been centered. Click 'Save Changes' to keep it.",
+      title: "Image focused",
+      description: "Your profile picture has been focused. Click 'Save Changes' to keep it.",
     })
   }
 
   const handleCropCancel = () => {
     setShowCropper(false)
     setTempImageSrc("")
-    setAvatarFile(null)
     
     // Clean up the temporary URL
     if (tempImageSrc) {
@@ -438,34 +346,26 @@ export default function ProfilePage() {
   }
 
   const removeAvatar = () => {
-    setAvatarFile(null)
     setAvatarPreview("")
     setFullImagePreview("")
-    setProfile((prev) => ({
+    setHasUnsavedAvatarChanges(true)
+    // Also update the profile state to clear the avatar
+    setProfile(prev => ({
       ...prev,
-      avatar: "", // Set to empty string instead of undefined
-      fullImage: "", // Clear the full image too
+      avatar: "",
+      fullImage: ""
     }))
-    setOriginalAvatar("") // Also clear the original avatar
   }
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: boolean } = {}
+
     if (!profile.firstName.trim()) newErrors.firstName = true
     if (!profile.lastName.trim()) newErrors.lastName = true
     if (!profile.email.trim()) newErrors.email = true
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (profile.email && !emailRegex.test(profile.email)) newErrors.email = true
+
     setErrors(newErrors)
-    if (Object.keys(newErrors).length > 0) {
-      toast({
-        title: "Missing or invalid information",
-        description: "Please fill out all required fields correctly before saving.",
-        variant: "destructive",
-      })
-      return false
-    }
-    return true
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSave = async () => {
@@ -474,18 +374,17 @@ export default function ProfilePage() {
     setIsSaving(true)
 
     try {
-      // Include avatar and full image in profile
       const profileToSave = {
         ...profile,
-        avatar: avatarPreview || "", // Use empty string if no preview
-        fullImage: fullImagePreview || "", // Include the full image
+        avatar: avatarPreview,
+        fullImage: fullImagePreview
       }
 
-      // Validate avatar URL before saving
-      if (avatarPreview && avatarPreview.length > 1000000) {
-        console.warn('Avatar data is very large, may cause issues:', avatarPreview.length, 'characters')
-      }
-
+      console.log('Saving profile to backend:', profileToSave)
+      console.log('Avatar being saved:', profileToSave.avatar ? 'exists' : 'null')
+      console.log('Avatar type:', typeof profileToSave.avatar)
+      console.log('Avatar length:', profileToSave.avatar?.length)
+      
       // Save to backend
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
@@ -495,71 +394,51 @@ export default function ProfilePage() {
       })
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('Server error:', errorData)
-        throw new Error(`Failed to save profile to server: ${res.status}`)
+        const errorText = await res.text()
+        console.error('Backend save failed:', res.status, errorText)
+        throw new Error(`Failed to save profile: ${res.status} - ${errorText}`)
       }
       
       const updatedProfile = await res.json()
-
-      // Ensure avatar and full image are preserved or cleared
-      if (avatarPreview && avatarPreview.startsWith('data:image/')) {
-        updatedProfile.avatar = avatarPreview
-        console.log('Avatar data is valid, length:', avatarPreview.length)
-      } else if (avatarPreview) {
-        console.warn('Avatar data is not a valid data URL:', avatarPreview.substring(0, 50) + '...')
-        updatedProfile.avatar = "" // Clear invalid avatar
-      } else {
-        updatedProfile.avatar = "" // Ensure it's cleared
-      }
-      
-      if (fullImagePreview) {
-        updatedProfile.fullImage = fullImagePreview
-      } else {
-        updatedProfile.fullImage = "" // Ensure it's cleared
-      }
+      console.log('Backend save successful:', updatedProfile)
 
       // Save to localStorage
       localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
 
-      // Update original values to reflect the saved state
+      // Update all profile states with the backend response
+      setProfile(updatedProfile)
       setOriginalProfile(updatedProfile)
-      setOriginalAvatar(avatarPreview || "")
-      setAvatarFile(null) // Clear the file since it's now saved
+      setAvatarPreview(updatedProfile.avatar || "")
+      setFullImagePreview(updatedProfile.fullImage || "")
+      setHasUnsavedAvatarChanges(false)
       
-      // Update original theme to reflect the saved state
+      console.log('Profile page state updated after save:')
+      console.log('Updated profile.avatar:', updatedProfile.avatar ? 'exists' : 'null')
+      console.log('Updated avatarPreview:', updatedProfile.avatar ? 'exists' : 'null')
+      
+      // Update original theme if changed
       if (hasThemeChanged) {
         setOriginalTheme(theme || "system")
         setHasThemeChanged(false)
         saveSuccessfulRef.current = true
       }
 
-      // Dispatch event to notify other components
-      console.log('Dispatching profile update event with data:', updatedProfile)
-      console.log('Avatar in updatedProfile:', updatedProfile.avatar)
-      console.log('Avatar preview:', avatarPreview)
-      
-      // Clear browser cache for avatar images
-      if (typeof window !== 'undefined') {
-        forceAvatarRefresh()
-      }
-      
+      // Notify other components
+      console.log('Profile page dispatching profileUpdated event:', updatedProfile)
+      console.log('Profile page avatar in event:', updatedProfile.avatar)
       window.dispatchEvent(
         new CustomEvent('profileUpdated', {
           detail: updatedProfile,
-        }),
+        })
       )
 
-      // Force a small delay to ensure cache clearing takes effect
-      setTimeout(() => {
-        toast({
-          title: 'Profile saved',
-          description: 'Your profile has been updated successfully.',
-        })
+      toast({
+        title: 'Profile saved',
+        description: 'Your profile has been updated successfully.',
+      })
 
-        // Redirect to dashboard immediately
-        router.push('/student/dashboard')
-      }, 100)
+      // Redirect to dashboard
+      router.push('/student/dashboard')
     } catch (error) {
       console.error('Error saving profile:', error)
       toast({
@@ -599,188 +478,155 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
-        {/* Profile Overview */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Profile Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Avatar 
-                        className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
-                        key={getAvatarKey(avatarPreview || profile.avatar, "profile")}
-                        onClick={() => {
-                          console.log('Avatar clicked - Debug info:')
-                          console.log('fullImagePreview:', fullImagePreview ? 'exists' : 'not set')
-                          console.log('avatarPreview:', avatarPreview ? 'exists' : 'not set')
-                          console.log('profile.avatar:', profile.avatar ? 'exists' : 'not set')
-                          console.log('profile.fullImage:', profile.fullImage ? 'exists' : 'not set')
-                          
-                          // Force refresh any existing avatar images
-                          forceAvatarRefresh()
-                          
-                          // If there's a full image available, use it for refocusing
-                          if (fullImagePreview) {
-                            console.log('Using fullImagePreview for refocusing')
-                            setTempImageSrc(fullImagePreview)
-                            setShowCropper(true)
-                          } else if (profile.fullImage) {
-                            console.log('Using profile.fullImage for refocusing')
-                            setTempImageSrc(profile.fullImage)
-                            setShowCropper(true)
-                          } else if (avatarPreview || profile.avatar) {
-                            // Fallback to avatar if no full image (for backward compatibility)
-                            console.log('Fallback to avatar for refocusing (no full image available)')
-                            setTempImageSrc(avatarPreview || profile.avatar || "")
-                            setShowCropper(true)
-                          } else {
-                            // If no avatar, trigger file upload
-                            console.log('No avatar found, triggering file upload')
-                            fileInputRef.current?.click()
-                          }
-                        }}
-                      >
-                        <AvatarImage 
-                          src={getAvatarUrl(avatarPreview || profile.avatar)} 
-                          onError={(e) => {
-                            console.log('Avatar image failed to load:', e)
-                            console.log('Attempted src:', getAvatarUrl(avatarPreview || profile.avatar))
-                            e.currentTarget.style.display = 'none'
-                          }}
-                          onLoad={() => {
-                            console.log('Avatar image loaded successfully')
-                          }}
-                        />
-                        <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
-                      </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Click to {avatarPreview || profile.avatar ? 'adjust' : 'upload'} profile picture</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {avatarPreview || profile.avatar ? (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                    onClick={removeAvatar}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                ) : null}
-              </div>
-
-              <div className="text-center">
-                <h3 className="font-semibold">
-                  {profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : "Your Name"}
-                </h3>
-                <p className="text-sm text-muted-foreground">{profile.email || "your.email@example.com"}</p>
-                {profile.gradeLevel && (
-                  <Badge variant="secondary" className="mt-2">
-                    {profile.gradeLevel}
-                  </Badge>
-                )}
-              </div>
-
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="w-full">
-                <Camera className="h-4 w-4 mr-2" />
-                Upload & Center Photo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Profile Settings */}
-        <div className="md:col-span-2 space-y-6">
-          {/* Personal Information */}
-          <Card>
+          {/* Profile Overview */}
+          <Card className="md:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Personal Information
-              </CardTitle>
-              <CardDescription>Update your personal details and contact information</CardDescription>
+              <CardTitle>Profile Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">
-                    First Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="firstName"
-                    value={profile.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    placeholder="Enter your first name"
-                    className={errors.firstName ? "border-red-500" : ""}
-                  />
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Avatar 
+                          key={`profile-avatar-${avatarPreview || profile.avatar ? (avatarPreview || profile.avatar || '').substring(0, 50) : 'no-avatar'}`}
+                          className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => {
+                            console.log('Avatar clicked - Debug info:')
+                            console.log('fullImagePreview:', fullImagePreview ? 'exists' : 'not set')
+                            console.log('avatarPreview:', avatarPreview ? 'exists' : 'not set')
+                            console.log('profile.avatar:', profile.avatar ? 'exists' : 'not set')
+                            console.log('profile.fullImage:', profile.fullImage ? 'exists' : 'not set')
+                            
+                            // If there's a full image available, use it for refocusing
+                            if (fullImagePreview) {
+                              console.log('Using fullImagePreview for refocusing')
+                              setTempImageSrc(fullImagePreview)
+                              setShowCropper(true)
+                            } else if (profile.fullImage) {
+                              console.log('Using profile.fullImage for refocusing')
+                              setTempImageSrc(profile.fullImage)
+                              setShowCropper(true)
+                            } else if (avatarPreview || profile.avatar) {
+                              // Fallback to avatar if no full image (for backward compatibility)
+                              console.log('Fallback to avatar for refocusing (no full image available)')
+                              setTempImageSrc(avatarPreview || profile.avatar || "")
+                              setShowCropper(true)
+                            } else {
+                              // If no avatar, trigger file upload
+                              console.log('No avatar found, triggering file upload')
+                              fileInputRef.current?.click()
+                            }
+                          }}
+                        >
+                          <AvatarImage 
+                            src={avatarPreview || profile.avatar} 
+                            onError={(e) => {
+                              console.log('Avatar image failed to load')
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                          <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
+                        </Avatar>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Click to {avatarPreview || profile.avatar ? 'adjust' : 'upload'} profile picture</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  {avatarPreview || profile.avatar ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      onClick={removeAvatar}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  ) : null}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">
-                    Last Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="lastName"
-                    value={profile.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    placeholder="Enter your last name"
-                    className={errors.lastName ? "border-red-500" : ""}
-                  />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  {avatarPreview || profile.avatar ? 'Change Photo' : 'Upload Photo'}
+                </Button>
+                <div className="text-center">
+                  <p className="text-sm font-medium">{profile.firstName} {profile.lastName}</p>
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email Address <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="Enter your email address"
-                  className={errors.email ? "border-red-500" : ""}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone"
-                  value={profile.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="Enter your phone number"
-                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Academic Information */}
-          <Card>
+          {/* Profile Form */}
+          <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                Academic Information
-              </CardTitle>
-              <CardDescription>Tell us about your educational background</CardDescription>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>
+                Update your personal information and contact details
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    value={profile.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    className={errors.firstName ? 'border-red-500' : ''}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    value={profile.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    className={errors.lastName ? 'border-red-500' : ''}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="gradeLevel">Grade Level</Label>
-                  <Select value={profile.gradeLevel} onValueChange={(value) => handleInputChange("gradeLevel", value)}>
+                  <Select value={profile.gradeLevel} onValueChange={(value) => handleInputChange('gradeLevel', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select your grade level" />
+                      <SelectValue placeholder="Select grade level" />
                     </SelectTrigger>
                     <SelectContent>
                       {gradeOptions.map((grade) => (
@@ -796,86 +642,75 @@ export default function ProfilePage() {
                   <Input
                     id="school"
                     value={profile.school}
-                    onChange={(e) => handleInputChange("school", e.target.value)}
-                    placeholder="Enter your school name"
+                    onChange={(e) => handleInputChange('school', e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Appearance Settings */}
-          <Card>
+          {/* Theme Settings */}
+          <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
-              <CardDescription>Customize how the application looks and feels</CardDescription>
+              <CardDescription>
+                Customize the appearance of the application
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Theme</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={currentTheme === "light" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleThemeChange("light")}
-                    className="justify-start"
-                  >
-                    <Sun className="h-4 w-4 mr-2" />
-                    Light
-                  </Button>
-                  <Button
-                    variant={currentTheme === "dark" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleThemeChange("dark")}
-                    className="justify-start"
-                  >
-                    <Moon className="h-4 w-4 mr-2" />
-                    Dark
-                  </Button>
-                  <Button
-                    variant={currentTheme === "system" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleThemeChange("system")}
-                    className="justify-start"
-                  >
-                    <Monitor className="h-4 w-4 mr-2" />
-                    System
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Choose your preferred theme. System will use your device's theme setting.
-                </p>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant={currentTheme === "light" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleThemeChange("light")}
+                >
+                  <Sun className="h-4 w-4 mr-2" />
+                  Light
+                </Button>
+                <Button
+                  variant={currentTheme === "dark" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleThemeChange("dark")}
+                >
+                  <Moon className="h-4 w-4 mr-2" />
+                  Dark
+                </Button>
+                <Button
+                  variant={currentTheme === "system" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleThemeChange("system")}
+                >
+                  <Monitor className="h-4 w-4 mr-2" />
+                  System
+                </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Save Button */}
-          <div className="flex justify-end gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => router.push("/student/dashboard")}
-              disabled={isLoading}
-              size="lg"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSave} 
-              disabled={isLoading || !hasChanges()} 
-              size="lg"
-              className={!hasChanges() ? "opacity-50 cursor-not-allowed" : ""}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </div>
-                  </div>
+          <Card className="md:col-span-3">
+            <CardContent className="flex justify-end space-x-4 pt-6">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/student/dashboard')}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges() || isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
 

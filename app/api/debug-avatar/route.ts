@@ -3,59 +3,104 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyToken } from '@/lib/jwt-auth'
 
 // Create Supabase client function to handle runtime configuration
 function createSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase configuration missing')
+  // Validate configuration at runtime
+  if (!supabaseUrl) {
+    throw new Error('Supabase URL not configured')
+  }
+
+  if (!supabaseServiceKey) {
+    throw new Error('Supabase service role key not configured')
   }
 
   return createClient(supabaseUrl, supabaseServiceKey)
 }
 
-// GET - Comprehensive avatar debugging
+// GET - Debug avatar functionality
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get('x-user-id')
     if (!userId) {
-      return NextResponse.json({ error: 'No user ID in headers' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const supabase = createSupabaseClient()
     
-    // Step 1: Check current user record
-    const { data: currentUser, error: fetchError } = await supabase
+    // Get current profile
+    const { data: profile, error: fetchError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, avatar, full_image, first_name, last_name')
       .eq('id', userId)
       .single()
 
     if (fetchError) {
       return NextResponse.json({ 
-        error: 'Failed to fetch user',
+        error: 'Failed to fetch profile',
         details: fetchError.message 
       }, { status: 500 })
     }
 
-    // Step 2: Check database schema for avatar field
-    const { data: schemaInfo, error: schemaError } = await supabase
-      .rpc('get_column_info', { table_name: 'users', column_name: 'avatar' })
-      .single()
+    return NextResponse.json({
+      success: true,
+      profile: {
+        id: profile.id,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        avatar: profile.avatar,
+        fullImage: profile.full_image,
+        avatarExists: !!profile.avatar,
+        avatarType: typeof profile.avatar,
+        avatarLength: profile.avatar?.length || 0,
+        avatarStartsWithDataImage: profile.avatar?.startsWith('data:image/') || false,
+        fullImageExists: !!profile.full_image,
+        fullImageType: typeof profile.full_image,
+        fullImageLength: profile.full_image?.length || 0,
+      }
+    })
+  } catch (error) {
+    console.error('Error in debug avatar:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
-    // Step 3: Try to update with a test avatar
-    const testAvatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+// POST - Test avatar update
+export async function POST(request: NextRequest) {
+  try {
+    const userId = request.headers.get('x-user-id')
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { avatar, fullImage } = await request.json()
+
+    console.log('Debug avatar POST - Received data:')
+    console.log('Avatar exists:', !!avatar)
+    console.log('Avatar type:', typeof avatar)
+    console.log('Avatar length:', avatar?.length)
+    console.log('Full image exists:', !!fullImage)
+    console.log('Full image type:', typeof fullImage)
+    console.log('Full image length:', fullImage?.length)
+
+    const supabase = createSupabaseClient()
     
-    const { data: updateResult, error: updateError } = await supabase
+    const { data: updatedProfile, error: updateError } = await supabase
       .from('users')
       .update({
-        avatar: testAvatar,
+        avatar: avatar,
+        full_image: fullImage,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
-      .select('*')
+      .select('id, avatar, full_image')
       .single()
 
     if (updateError) {
@@ -65,66 +110,22 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Step 4: Fetch again to verify
-    const { data: verifyUser, error: verifyError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (verifyError) {
-      return NextResponse.json({ 
-        error: 'Failed to verify update',
-        details: verifyError.message 
-      }, { status: 500 })
-    }
-
-    // Step 5: Try a raw SQL query to see what's actually in the database
-    const { data: rawResult, error: rawError } = await supabase
-      .rpc('get_user_avatar_raw', { user_id: userId })
-
     return NextResponse.json({
       success: true,
-      debug: {
-        userId,
-        currentUser: {
-          id: currentUser.id,
-          email: currentUser.email,
-          avatar: currentUser.avatar,
-          avatarType: typeof currentUser.avatar,
-          avatarLength: currentUser.avatar?.length,
-          hasAvatar: !!currentUser.avatar
-        },
-        updateResult: {
-          id: updateResult.id,
-          avatar: updateResult.avatar,
-          avatarType: typeof updateResult.avatar,
-          avatarLength: updateResult.avatar?.length,
-          hasAvatar: !!updateResult.avatar
-        },
-        verifyUser: {
-          id: verifyUser.id,
-          avatar: verifyUser.avatar,
-          avatarType: typeof verifyUser.avatar,
-          avatarLength: verifyUser.avatar?.length,
-          hasAvatar: !!verifyUser.avatar
-        },
-        rawQuery: {
-          success: !rawError,
-          data: rawResult,
-          error: rawError?.message
-        },
-        schemaInfo: {
-          success: !schemaError,
-          data: schemaInfo,
-          error: schemaError?.message
-        }
+      updatedProfile: {
+        id: updatedProfile.id,
+        avatar: updatedProfile.avatar,
+        fullImage: updatedProfile.full_image,
+        avatarExists: !!updatedProfile.avatar,
+        avatarType: typeof updatedProfile.avatar,
+        avatarLength: updatedProfile.avatar?.length || 0,
+        avatarStartsWithDataImage: updatedProfile.avatar?.startsWith('data:image/') || false,
       }
     })
   } catch (error) {
-    console.error('Error in avatar debug:', error)
+    console.error('Error in debug avatar POST:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

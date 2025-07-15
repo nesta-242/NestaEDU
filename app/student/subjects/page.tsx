@@ -518,30 +518,39 @@ export default function SubjectsPage() {
 
       <div className="space-y-6">
         {/* Subject Selection Buttons */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Button
             variant={activeTab === "math" ? "default" : "outline"}
             onClick={() => setActiveTab("math")}
-            className="flex items-center gap-2 px-6 py-3"
+            className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm sm:text-base min-h-[48px]"
             disabled={isLoading}
           >
-            📐 {capitalizeSubject("Mathematics")} ({getSessionCountBySubject("math")})
+            <span className="text-base sm:text-lg">📐</span>
+            <span className="truncate">
+              {capitalizeSubject("Mathematics")} ({getSessionCountBySubject("math")})
+            </span>
           </Button>
           <Button
             variant={activeTab === "science" ? "default" : "outline"}
             onClick={() => setActiveTab("science")}
-            className="flex items-center gap-2 px-6 py-3"
+            className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm sm:text-base min-h-[48px]"
             disabled={isLoading}
           >
-            🔬 Science ({getSessionCountBySubject("science")})
+            <span className="text-base sm:text-lg">🔬</span>
+            <span className="truncate">
+              Science ({getSessionCountBySubject("science")})
+            </span>
           </Button>
           <Button
             variant={activeTab === "general" ? "default" : "outline"}
             onClick={() => setActiveTab("general")}
-            className="flex items-center gap-2 px-6 py-3"
+            className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm sm:text-base min-h-[48px]"
             disabled={isLoading}
           >
-            📚 General ({getSessionCountBySubject("general")})
+            <span className="text-base sm:text-lg">📚</span>
+            <span className="truncate">
+              General ({getSessionCountBySubject("general")})
+            </span>
           </Button>
         </div>
         

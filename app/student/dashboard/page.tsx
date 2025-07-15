@@ -154,93 +154,81 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    const loadUserProfile = () => {
+    // Always fetch user profile from API on load
+    const fetchUserProfile = async () => {
       try {
-        const profile = localStorage.getItem("userProfile")
+        const res = await fetch('/api/user/profile')
+        if (res.ok) {
+          const user = await res.json()
+          console.log('Dashboard fetched user from API:', user)
+          console.log('Dashboard avatar from API:', user?.avatar)
+          
+          // Check if localStorage has more recent data (from profile updates)
+          const localProfile = localStorage.getItem('userProfile')
+          if (localProfile) {
+            const parsedLocalProfile = JSON.parse(localProfile)
+            console.log('Dashboard localStorage avatar:', parsedLocalProfile.avatar ? 'exists' : 'null')
+            console.log('Dashboard API avatar:', user.avatar ? 'exists' : 'null')
+            
+            // If localStorage avatar is different from API avatar (including null vs non-null), use localStorage
+            if (parsedLocalProfile.avatar !== user.avatar) {
+              console.log('Dashboard using localStorage avatar (different from API):', parsedLocalProfile.avatar ? 'exists' : 'null')
+              setUserProfile(parsedLocalProfile)
+              return
+            }
+          }
+          
+          setUserProfile(user)
+          localStorage.setItem('userProfile', JSON.stringify(user))
+        } else {
+          // fallback to localStorage if API fails
+          const profile = localStorage.getItem('userProfile')
+          if (profile) {
+            const parsedProfile = JSON.parse(profile)
+            console.log('Dashboard fallback to localStorage:', parsedProfile)
+            console.log('Dashboard avatar from localStorage:', parsedProfile?.avatar)
+            setUserProfile(parsedProfile)
+          }
+        }
+      } catch (error) {
+        // fallback to localStorage on error
+        const profile = localStorage.getItem('userProfile')
         if (profile) {
-          setUserProfile(JSON.parse(profile))
+          const parsedProfile = JSON.parse(profile)
+          console.log('Dashboard error fallback to localStorage:', parsedProfile)
+          console.log('Dashboard avatar from error fallback:', parsedProfile?.avatar)
+          setUserProfile(parsedProfile)
         }
-      } catch (error) {
-        console.error("Error loading user profile:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
+    fetchUserProfile()
+  }, [])
 
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.status === 401) {
-          router.push('/login')
-          return
-        }
-        const data = await res.json()
-        console.log('Fetched user profile:', data.user)
-        console.log('Avatar in fetched user:', data.user?.avatar)
-        setUserProfile(data.user)
-        localStorage.setItem('userProfile', JSON.stringify(data.user))
-        
-        // Force refresh avatar images after loading profile
-        forceAvatarRefresh()
-      } catch (error) {
-        console.error('Error fetching user profile:', error)
-      }
-    }
-
-    // Load profile from localStorage first
-    loadUserProfile()
-
-    // Listen for profile updates
+  // Listen for profile updates
+  useEffect(() => {
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
-      console.log('Profile update event received:', customEvent.detail)
-      console.log('Current userProfile before update:', userProfile)
-      console.log('Avatar in update event:', customEvent.detail?.avatar)
+      console.log('Dashboard received profile update:', customEvent.detail)
+      console.log('Dashboard avatar from update:', customEvent.detail?.avatar ? 'exists' : 'null')
+      console.log('Dashboard avatar length from update:', customEvent.detail?.avatar?.length)
       
-      // Ensure we preserve all fields including avatar
-      const updatedProfile = {
-        ...customEvent.detail,
-        avatar: customEvent.detail?.avatar || userProfile?.avatar || null
-      }
-      
-      // Immediately update state and localStorage
-      setUserProfile(updatedProfile)
-      localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
-      
-      // Force avatar refresh to ensure immediate visual update
-      forceAvatarRefresh()
-      
-      console.log('Profile updated, new userProfile should be:', updatedProfile)
-      console.log('Avatar in updatedProfile:', updatedProfile.avatar)
-      
-      // Optionally fetch from API to ensure consistency (but don't wait for it)
-      fetchUser().catch(error => {
-        console.error('Error fetching updated profile from API:', error)
-      })
+      // Force a state update to trigger re-render
+      setUserProfile(null)
+      setTimeout(() => {
+        setUserProfile(customEvent.detail)
+        localStorage.setItem('userProfile', JSON.stringify(customEvent.detail))
+        console.log('Dashboard updated userProfile state with:', customEvent.detail?.avatar ? 'exists' : 'null')
+      }, 10)
     }
-
-    // Listen for avatar refresh events
-    const handleAvatarRefresh = (e: Event) => {
-      console.log('Avatar refresh event received, forcing re-render')
-      // Force a re-render by updating the state with a new object
-      setUserProfile((prev: any) => {
-        const newProfile = { ...prev }
-        // Add a timestamp to force React to see it as a new object
-        newProfile._lastUpdate = Date.now()
-        return newProfile
-      })
-    }
-
     window.addEventListener("profileUpdated", handleProfileUpdate)
-    window.addEventListener("avatarRefresh", handleAvatarRefresh)
+    return () => window.removeEventListener("profileUpdated", handleProfileUpdate)
+  }, [])
 
-    // Add visibility change listener to refresh profile when page becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('Page became visible, refreshing user profile...')
-        fetchUser()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
 
+
+  useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         console.log('Fetching dashboard data...')
@@ -481,7 +469,6 @@ export default function DashboardPage() {
     }
 
     // Initial data fetch
-    fetchUser()
     fetchDashboardData().finally(() => setIsLoading(false))
 
     // Listen for chat session updates
@@ -493,9 +480,6 @@ export default function DashboardPage() {
 
     return () => {
       window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
-      window.removeEventListener("profileUpdated", handleProfileUpdate)
-      window.removeEventListener("avatarRefresh", handleAvatarRefresh)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [router])
 
@@ -503,6 +487,8 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('userProfile state changed:', userProfile)
     console.log('Avatar in userProfile:', userProfile?.avatar)
+    console.log('Avatar type:', typeof userProfile?.avatar)
+    console.log('Avatar length:', userProfile?.avatar?.length)
   }, [userProfile])
 
   const getUserInitials = () => {
@@ -593,25 +579,22 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar 
-                className="h-12 w-12" 
-                key={`dashboard-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}-${userProfile?._lastUpdate || Date.now()}`}
-                data-avatar-key={`dashboard-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}`}
-              >
-                <AvatarImage 
-                  src={getAvatarUrl(userProfile?.avatar)} 
+              <Avatar className="h-12 w-12" key={`dashboard-avatar-${userProfile?.avatar ? userProfile.avatar.substring(0, 50) : 'no-avatar'}`}>
+                <AvatarImage
+                  src={userProfile?.avatar}
+                  alt="User Avatar"
+                  className="object-cover"
                   onError={(e) => {
-                    console.log('Avatar image failed to load, falling back to initials')
-                    console.log('Attempted src:', getAvatarUrl(userProfile?.avatar))
-                    console.log('userProfile.avatar:', userProfile?.avatar)
+                    console.log('Dashboard avatar image failed to load:', userProfile?.avatar)
                     e.currentTarget.style.display = 'none'
                   }}
                   onLoad={() => {
-                    console.log('Avatar image loaded successfully')
-                    console.log('Avatar data is valid, length:', userProfile?.avatar?.length)
+                    console.log('Dashboard avatar image loaded successfully')
                   }}
                 />
-                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                <AvatarFallback className="text-xl font-bold">
+                  {getUserInitials()}
+                </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">

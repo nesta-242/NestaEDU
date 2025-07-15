@@ -47,6 +47,16 @@ interface DetailedExamResult extends ExamResult {
     feedback: string
     correctAnswer?: string
   }[]
+  examData?: {
+    questions: {
+      id: number
+      question: string
+      type: string
+      options?: string[]
+      correctAnswer: string
+      points: number
+    }[]
+  }
 }
 
 export default function PracticeExamPage() {
@@ -158,7 +168,16 @@ export default function PracticeExamPage() {
           timeSpent: result.time_spent || 0, // Map from snake_case
           date: result.created_at, // Map from snake_case
           feedback: result.feedback,
-          questionResults: result.questionResults || []
+          questionResults: result.questionResults || [],
+          examData: result.examData || null
+        }
+        
+        // Extract exam data from answers field if available
+        if (result.answers && typeof result.answers === 'object') {
+          const answersData = result.answers as any
+          if (answersData.examData) {
+            mappedResult.examData = answersData.examData
+          }
         }
         
         console.log('Mapped result:', mappedResult)
@@ -471,36 +490,60 @@ export default function PracticeExamPage() {
                   <CardDescription>Detailed feedback for each question</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {selectedExam.questionResults.map((result, index) => (
-                    <div key={result.questionId} className="border rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`p-1 rounded-full ${
-                            result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">Question {result.questionId}</h4>
-                            <Badge variant="outline">
-                              {result.pointsEarned}/{result.maxPoints} points
-                            </Badge>
+                  {selectedExam.questionResults.map((result, index) => {
+                    // Find the original question
+                    const originalQuestion = selectedExam.examData?.questions?.find(q => q.id === result.questionId)
+                    
+                    return (
+                      <div key={result.questionId} className="border rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`p-1 rounded-full ${
+                              result.isCorrect ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                            }`}
+                          >
+                            {result.isCorrect ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
-                          </p>
-                          {!result.isCorrect && result.correctAnswer && (
-                            <p className="text-sm text-green-600 mb-2">
-                              <strong>Correct answer:</strong> {result.correctAnswer}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium">Question {result.questionId}</h4>
+                              <Badge variant="outline">
+                                {result.pointsEarned}/{result.maxPoints} points
+                              </Badge>
+                            </div>
+                            
+                            {/* Original Question */}
+                            {originalQuestion && (
+                              <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Question:</p>
+                                <p className="text-sm">{originalQuestion.question}</p>
+                                {originalQuestion.type === "multiple-choice" && originalQuestion.options && (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Options:</p>
+                                    <ul className="text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
+                                      {originalQuestion.options.map((option, optIndex) => (
+                                        <li key={optIndex}>{option}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            <p className="text-sm text-muted-foreground mb-2">
+                              <strong>Your answer:</strong> {result.userAnswer || "No answer provided"}
                             </p>
-                          )}
-                          <p className="text-sm">{result.feedback}</p>
+                            {!result.isCorrect && result.correctAnswer && (
+                              <p className="text-sm text-green-600 mb-2">
+                                <strong>Correct answer:</strong> {result.correctAnswer}
+                              </p>
+                            )}
+                            <p className="text-sm">{result.feedback}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </CardContent>
               </Card>
             )}

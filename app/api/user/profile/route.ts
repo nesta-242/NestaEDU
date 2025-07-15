@@ -83,6 +83,10 @@ export async function PUT(request: NextRequest) {
 
     const { firstName, lastName, phone, gradeLevel, school, avatar, fullImage } = await request.json()
 
+    // Store null in DB if avatar or fullImage is empty string
+    const avatarToStore = avatar === '' ? null : avatar
+    const fullImageToStore = fullImage === '' ? null : fullImage
+
     console.log('PUT /api/user/profile - Received avatar data:', avatar ? 'exists' : 'null')
     console.log('PUT /api/user/profile - Avatar type:', typeof avatar)
     console.log('PUT /api/user/profile - Avatar length:', avatar?.length)
@@ -97,8 +101,8 @@ export async function PUT(request: NextRequest) {
         phone: phone,
         grade_level: gradeLevel,
         school: school,
-        avatar: avatar,
-        full_image: fullImage,
+        avatar: avatarToStore,
+        full_image: fullImageToStore,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
