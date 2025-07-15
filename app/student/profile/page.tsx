@@ -187,6 +187,15 @@ export default function ProfilePage() {
     }
   }, [theme, originalTheme])
 
+  // Debug effect to monitor avatarPreview changes
+  useEffect(() => {
+    console.log('avatarPreview changed:', avatarPreview ? 'has value' : 'empty')
+    if (avatarPreview) {
+      console.log('avatarPreview length:', avatarPreview.length)
+      console.log('avatarPreview starts with data:image/:', avatarPreview.startsWith('data:image/'))
+    }
+  }, [avatarPreview])
+
   // Cleanup effect to revert theme if user navigates away without saving
   useEffect(() => {
     return () => {
@@ -373,6 +382,11 @@ export default function ProfilePage() {
   }
 
   const handleCropComplete = (croppedImage: string) => {
+    console.log('Crop complete - Debug info:')
+    console.log('Cropped image length:', croppedImage?.length)
+    console.log('Cropped image starts with data:image/:', croppedImage?.startsWith('data:image/'))
+    console.log('Cropped image preview:', croppedImage?.substring(0, 100) + '...')
+    
     setAvatarPreview(croppedImage)
     // Clear the old avatar from profile state immediately
     setProfile(prev => ({
@@ -612,7 +626,17 @@ export default function ProfilePage() {
                           }
                         }}
                       >
-                        <AvatarImage src={getAvatarUrl(avatarPreview || profile.avatar)} />
+                        <AvatarImage 
+                          src={getAvatarUrl(avatarPreview || profile.avatar)} 
+                          onError={(e) => {
+                            console.log('Avatar image failed to load:', e)
+                            console.log('Attempted src:', getAvatarUrl(avatarPreview || profile.avatar))
+                            e.currentTarget.style.display = 'none'
+                          }}
+                          onLoad={() => {
+                            console.log('Avatar image loaded successfully')
+                          }}
+                        />
                         <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </TooltipTrigger>

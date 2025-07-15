@@ -10,8 +10,9 @@ export function getAvatarUrl(avatarData: string | null | undefined): string {
   if (!avatarData || !avatarData.startsWith('data:image/')) {
     return ""
   }
-  // Add timestamp to force browser to reload the image
-  return `${avatarData}?t=${Date.now()}`
+  // For data URLs, don't add timestamp parameters as they can cause issues
+  // The cache-busting is handled by the component key instead
+  return avatarData
 }
 
 // Utility function to generate a unique key for avatar components
