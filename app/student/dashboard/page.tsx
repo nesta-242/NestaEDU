@@ -186,9 +186,12 @@ export default function DashboardPage() {
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
       console.log('Profile update event received:', customEvent.detail)
+      console.log('Current userProfile before update:', userProfile)
+      console.log('Avatar in update event:', customEvent.detail?.avatar)
       setUserProfile(customEvent.detail)
       // Also update localStorage to ensure consistency
       localStorage.setItem('userProfile', JSON.stringify(customEvent.detail))
+      console.log('Profile updated, new userProfile should be:', customEvent.detail)
     }
 
     window.addEventListener("profileUpdated", handleProfileUpdate)
@@ -459,6 +462,12 @@ export default function DashboardPage() {
     }
   }, [router])
 
+  // Debug effect to track userProfile changes
+  useEffect(() => {
+    console.log('userProfile state changed:', userProfile)
+    console.log('Avatar in userProfile:', userProfile?.avatar)
+  }, [userProfile])
+
   const getUserInitials = () => {
     if (userProfile?.firstName && userProfile?.lastName) {
       return `${userProfile.firstName[0]}${userProfile.lastName[0]}`.toUpperCase()
@@ -547,8 +556,14 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={userProfile?.avatar || ""} />
+              <Avatar className="h-12 w-12" key={userProfile?.avatar || 'no-avatar'}>
+                <AvatarImage 
+                  src={userProfile?.avatar ? `${userProfile.avatar}?t=${Date.now()}` : ""} 
+                  onError={(e) => {
+                    console.log('Avatar image failed to load:', userProfile?.avatar)
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
                 <AvatarFallback>{getUserInitials()}</AvatarFallback>
               </Avatar>
               <div>
