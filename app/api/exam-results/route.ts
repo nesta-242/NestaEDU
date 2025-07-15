@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
       take: 20, // Limit to 20 most recent results
     })
 
+    console.log('Raw exam results from database:', results.map(r => ({
+      id: r.id,
+      percentage: r.percentage,
+      percentageType: typeof r.percentage
+    })))
+
     // Process results to include question results count
     const processedResults = results.map(result => {
       let questionResultsCount = 0

@@ -215,10 +215,24 @@ export default function DashboardPage() {
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .slice(0, 5)
         const practiceExams = examResults.length
+        
+        // Debug the percentage calculation
+        console.log('Exam results with percentages:', examResults.map(exam => ({
+          id: exam.id,
+          subject: exam.subject,
+          percentage: exam.percentage,
+          percentageType: typeof exam.percentage
+        })))
+        
         const averageScore =
           examResults.length > 0
-            ? Math.round(examResults.reduce((sum, exam) => sum + exam.percentage, 0) / examResults.length)
+            ? Math.round(examResults.reduce((sum, exam) => {
+                console.log(`Adding percentage: ${exam.percentage} (type: ${typeof exam.percentage})`)
+                return sum + exam.percentage
+              }, 0) / examResults.length)
             : 0
+            
+        console.log('Calculated average score:', averageScore)
 
         // Calculate weekly activity for current week (Sunday to Saturday)
         const weeklyChatActivity = Array(7).fill(0)
