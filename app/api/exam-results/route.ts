@@ -33,20 +33,6 @@ export async function GET(request: NextRequest) {
     
     console.log('Exam results GET - Found', results.length, 'results')
     
-    // Add debugging for average score calculation
-    if (results.length > 0) {
-      console.log('Exam results GET - Sample results for debugging:')
-      results.slice(0, 3).forEach((result, index) => {
-        console.log(`  Result ${index + 1}:`, {
-          id: result.id,
-          percentage: result.percentage,
-          percentageType: typeof result.percentage,
-          score: result.score,
-          max_score: result.max_score
-        })
-      })
-    }
-    
     return NextResponse.json(results)
     
   } catch (error) {

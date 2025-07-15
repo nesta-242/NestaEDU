@@ -173,29 +173,32 @@ export default function AITutorPage() {
           messages: messages,
         }
 
-        fetch('/api/chat-sessions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(sessionToSave),
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (!currentSessionId && data.id) {
-            setCurrentSessionId(data.id)
-          }
-          // Dispatch event to update other components
-          window.dispatchEvent(new CustomEvent("chatSessionUpdated"))
-        })
-        .catch(error => {
-          console.error("Failed to save chat session:", error)
-        })
+        // Only save if we have a meaningful conversation (more than just the initial message)
+        if (messages.length > 1) {
+          fetch('/api/chat-sessions', {
+            method: currentSessionId ? 'PUT' : 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sessionToSave),
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (!currentSessionId && data.id) {
+              setCurrentSessionId(data.id)
+            }
+            // Dispatch event to update other components
+            window.dispatchEvent(new CustomEvent("chatSessionUpdated"))
+          })
+          .catch(error => {
+            console.error("Failed to save chat session:", error)
+          })
+        }
       } catch (error) {
         console.error("Failed to save chat session:", error)
       }
     }
-  }, [messages, isLoading, currentSessionId, selectedSubject])
+  }, [messages.length, isLoading, currentSessionId, selectedSubject]) // Changed dependency to messages.length instead of messages
 
   // Topic detection function
   const detectTopicFromContent = (messages: any[], subject: string): string => {

@@ -101,6 +101,59 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  let prisma = null
+  
+  try {
+    const body = await request.json()
+    const { id, subject, topic, title, lastMessage, messages } = body
+    
+    // Get user ID from headers
+    const userId = request.headers.get('x-user-id')
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID not found' }, { status: 401 })
+    }
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
+    }
+    
+    // Get a fresh Prisma client
+    prisma = await getPrisma()
+    
+    const session = await prisma.chatSession.update({
+      where: {
+        id: id,
+        user_id: userId,
+      },
+      data: {
+        subject,
+        topic,
+        title,
+        last_message: lastMessage,
+        messages,
+        message_count: messages ? messages.length : 0,
+        updated_at: new Date(),
+      },
+    })
+    
+    return NextResponse.json(session)
+    
+  } catch (error) {
+    console.error('Chat sessions PUT - Error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update chat session' },
+      { status: 500 }
+    )
+  } finally {
+    // Always disconnect the client
+    if (prisma) {
+      await disconnectPrisma(prisma)
+    }
+  }
+}
+
 // DELETE - Delete a chat session or clear all sessions
 export async function DELETE(request: NextRequest) {
   try {

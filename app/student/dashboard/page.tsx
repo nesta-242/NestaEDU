@@ -216,35 +216,19 @@ export default function DashboardPage() {
           .slice(0, 5)
         const practiceExams = examResults.length
         
-        // Debug the percentage calculation
-        console.log('Exam results with percentages:', examResults.map(exam => ({
-          id: exam.id,
-          subject: exam.subject,
-          percentage: exam.percentage,
-          percentageType: typeof exam.percentage
-        })))
-        
-        // Calculate average score with detailed debugging
+        // Calculate average score
         let totalPercentage = 0
         let validExams = 0
         
-        examResults.forEach((exam, index) => {
+        examResults.forEach((exam) => {
           const percentage = Number(exam.percentage)
-          console.log(`Exam ${index + 1}: ${exam.subject} - Raw percentage: ${exam.percentage}, Converted: ${percentage}, Type: ${typeof percentage}`)
-          
           if (!isNaN(percentage) && percentage >= 0 && percentage <= 100) {
             totalPercentage += percentage
             validExams++
-            console.log(`  ✓ Valid percentage: ${percentage}, Running total: ${totalPercentage}`)
-          } else {
-            console.log(`  ✗ Invalid percentage: ${percentage} (skipping)`)
           }
         })
         
         const averageScore = validExams > 0 ? Math.round(totalPercentage / validExams) : 0
-        console.log(`Final calculation: ${totalPercentage} / ${validExams} = ${averageScore}%`)
-            
-        console.log('Calculated average score:', averageScore)
 
         // Calculate weekly activity for current week (Sunday to Saturday)
         const weeklyChatActivity = Array(7).fill(0)
@@ -302,24 +286,31 @@ export default function DashboardPage() {
             activityDates.add(d.toISOString().slice(0, 10))
           } catch (e) {}
         })
+        
         let currentStreak = 0
         let lastSessionDate = null
         const sortedDates = Array.from(activityDates).sort().reverse()
-        for (let i = 0; i < sortedDates.length; i++) {
-          const currentDate = new Date(sortedDates[i])
-          const expectedDate = new Date()
-          expectedDate.setDate(expectedDate.getDate() - i)
-          expectedDate.setHours(0, 0, 0, 0)
+        
+        // If there's any activity, start with at least 1 day streak
+        if (sortedDates.length > 0) {
+          currentStreak = 1
+          lastSessionDate = sortedDates[0]
           
-          if (currentDate.toISOString().slice(0, 10) === expectedDate.toISOString().slice(0, 10)) {
-            currentStreak++
-            if (i === 0) {
-              lastSessionDate = sortedDates[i]
+          // Check for consecutive days starting from the second most recent day
+          for (let i = 1; i < sortedDates.length; i++) {
+            const currentDate = new Date(sortedDates[i])
+            const expectedDate = new Date()
+            expectedDate.setDate(expectedDate.getDate() - i)
+            expectedDate.setHours(0, 0, 0, 0)
+            
+            if (currentDate.toISOString().slice(0, 10) === expectedDate.toISOString().slice(0, 10)) {
+              currentStreak++
+            } else {
+              break
             }
-          } else {
-            break
           }
         }
+        
         let improvementTrend: 'up' | 'down' | 'stable' = 'stable'
         if (chatHistory.length >= 4) {
           try {
@@ -471,6 +462,27 @@ export default function DashboardPage() {
     return daysDiff
   }
 
+  // Helper function to format relative time
+  const formatRelativeTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp)
+      const now = new Date()
+      const diffInMs = now.getTime() - date.getTime()
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+      const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+
+      if (diffInMinutes < 1) return 'Just now'
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+      if (diffInHours < 24) return `${diffInHours}h ago`
+      if (diffInDays < 7) return `${diffInDays}d ago`
+      return date.toLocaleDateString()
+    } catch (error) {
+      console.error('Error formatting timestamp:', error)
+      return 'Unknown'
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -528,7 +540,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.currentStreak}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.currentStreak === 0 ? "Start today!" : "days in a row"}
+              {stats.currentStreak === 0 ? "Start today!" : stats.currentStreak === 1 ? "day in a row" : "days in a row"}
             </p>
           </CardContent>
         </Card>
@@ -606,6 +618,8 @@ export default function DashboardPage() {
                             {capitalizeSubject(session.subject)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{session.messageCount} messages</span>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">{formatRelativeTime(session.timestamp)}</span>
                         </div>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />

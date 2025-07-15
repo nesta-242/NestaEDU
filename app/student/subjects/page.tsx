@@ -72,9 +72,9 @@ export default function SubjectsPage() {
           subject: session.subject,
           topic: session.topic || '',
           title: session.title || 'Conversation',
-          lastMessage: session.lastMessage || '',
-          timestamp: new Date(session.updatedAt),
-          messageCount: session.messageCount || 0,
+          lastMessage: session.last_message || '',
+          timestamp: new Date(session.updated_at),
+          messageCount: session.message_count || 0,
         }))
         setChatHistory(chatHistory)
       } else {
