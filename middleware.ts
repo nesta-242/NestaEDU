@@ -9,7 +9,8 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api/user/profile') || 
       request.nextUrl.pathname.startsWith('/api/chat-sessions') ||
       request.nextUrl.pathname.startsWith('/api/exam-results') ||
-      request.nextUrl.pathname.startsWith('/api/grade-exam')) {
+      request.nextUrl.pathname.startsWith('/api/grade-exam') ||
+      request.nextUrl.pathname.startsWith('/api/test-avatar')) {
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -74,5 +75,6 @@ export const config = {
     '/api/generate-exam',
     '/api/grade-exam',
     '/api/user/profile',
+    '/api/test-avatar',
   ],
 } 
