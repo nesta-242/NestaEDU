@@ -164,11 +164,15 @@ export default function DashboardPage() {
 
     const fetchDashboardData = async () => {
       try {
+        console.log('Fetching dashboard data...')
+        
         // Fetch chat sessions from database
         const chatRes = await fetch('/api/chat-sessions')
+        console.log('Chat sessions response status:', chatRes.status)
         let chatHistory: ChatSession[] = []
         if (chatRes.ok) {
           const sessions = await chatRes.json()
+          console.log('Chat sessions data:', sessions)
           chatHistory = sessions.map((session: any) => ({
             id: session.id,
             subject: session.subject,
@@ -178,13 +182,17 @@ export default function DashboardPage() {
             timestamp: session.updated_at,
             messageCount: session.message_count || 0,
           }))
+        } else {
+          console.error('Chat sessions fetch failed:', chatRes.status, chatRes.statusText)
         }
 
         // Fetch exam results from database
         const examRes = await fetch('/api/exam-results')
+        console.log('Exam results response status:', examRes.status)
         let examResults: ExamResult[] = []
         if (examRes.ok) {
           const results = await examRes.json()
+          console.log('Exam results data:', results)
           examResults = results.map((result: any) => ({
             id: result.id,
             subject: getSubjectDisplayName(result.subject), // Convert route parameter to display name
@@ -195,7 +203,12 @@ export default function DashboardPage() {
             timeSpent: result.time_spent || 0,
             date: result.created_at,
           }))
+        } else {
+          console.error('Exam results fetch failed:', examRes.status, examRes.statusText)
         }
+
+        console.log('Processed chat history length:', chatHistory.length)
+        console.log('Processed exam results length:', examResults.length)
 
         const learningSessions = chatHistory.length
         const recentSessions = chatHistory
@@ -327,7 +340,7 @@ export default function DashboardPage() {
           }
         }).length
         
-        setStats({
+        const finalStats = {
           learningSessions,
           recentSessions,
           practiceExams,
@@ -342,7 +355,10 @@ export default function DashboardPage() {
           improvementTrend,
           examsThisWeek,
           sessionsThisWeek,
-        })
+        }
+        
+        console.log('Final stats object:', finalStats)
+        setStats(finalStats)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         setStats({

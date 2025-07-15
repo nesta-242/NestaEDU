@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/jwt-auth'
 
+export const dynamic = 'force-dynamic';
+
 // Get user ID from request headers (set by middleware)
 function getUserId(request: NextRequest): string | null {
   return request.headers.get('x-user-id')
