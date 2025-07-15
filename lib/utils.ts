@@ -5,6 +5,45 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Utility function to add cache-busting parameters to avatar URLs
+export function getAvatarUrl(avatarData: string | null | undefined): string {
+  if (!avatarData || !avatarData.startsWith('data:image/')) {
+    return ""
+  }
+  // Add timestamp to force browser to reload the image
+  return `${avatarData}?t=${Date.now()}`
+}
+
+// Utility function to generate a unique key for avatar components
+export function getAvatarKey(avatarData: string | null | undefined, prefix: string = "avatar"): string {
+  const avatarHash = avatarData ? avatarData.substring(0, 50) : 'no-avatar'
+  return `${prefix}-${avatarHash}-${Date.now()}`
+}
+
+// Utility function to force refresh all avatar images in the DOM
+export function forceAvatarRefresh(): void {
+  if (typeof window === 'undefined') return
+  
+  // Find all avatar images and force them to reload
+  const avatarImages = document.querySelectorAll('img[src*="data:image/"]')
+  avatarImages.forEach(img => {
+    const currentSrc = img.getAttribute('src')
+    if (currentSrc && currentSrc.includes('data:image/')) {
+      // Temporarily clear the src to force a reload
+      img.setAttribute('src', '')
+      // Set it back with a timestamp
+      setTimeout(() => {
+        img.setAttribute('src', `${currentSrc}?t=${Date.now()}`)
+      }, 10)
+    }
+  })
+  
+  // Dispatch a custom event to notify components
+  window.dispatchEvent(new CustomEvent('avatarRefresh', { 
+    detail: { timestamp: Date.now() } 
+  }))
+}
+
 // Utility function to properly capitalize subjects and BJC/BGCSE terms
 export function capitalizeSubject(subject: string): string {
   if (!subject) return subject

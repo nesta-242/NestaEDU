@@ -27,6 +27,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { capitalizeSubject } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+import { getAvatarUrl, getAvatarKey, forceAvatarRefresh } from "@/lib/utils"
 
 interface ChatSession {
   id: string
@@ -174,6 +176,9 @@ export default function DashboardPage() {
         console.log('Fetched user profile:', data.user)
         setUserProfile(data.user)
         localStorage.setItem('userProfile', JSON.stringify(data.user))
+        
+        // Force refresh avatar images after loading profile
+        forceAvatarRefresh()
       } catch (error) {
         console.error('Error fetching user profile:', error)
       }
@@ -194,7 +199,15 @@ export default function DashboardPage() {
       console.log('Profile updated, new userProfile should be:', customEvent.detail)
     }
 
+    // Listen for avatar refresh events
+    const handleAvatarRefresh = (e: Event) => {
+      console.log('Avatar refresh event received, forcing re-render')
+      // Force a re-render by updating the state
+      setUserProfile((prev: any) => ({ ...prev }))
+    }
+
     window.addEventListener("profileUpdated", handleProfileUpdate)
+    window.addEventListener("avatarRefresh", handleAvatarRefresh)
 
     // Add visibility change listener to refresh profile when page becomes visible
     const handleVisibilityChange = () => {
@@ -458,6 +471,7 @@ export default function DashboardPage() {
     return () => {
       window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
       window.removeEventListener("profileUpdated", handleProfileUpdate)
+      window.removeEventListener("avatarRefresh", handleAvatarRefresh)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [router])
@@ -556,9 +570,9 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-12 w-12" key={userProfile?.avatar ? `avatar-${Date.now()}` : 'no-avatar'}>
+              <Avatar className="h-12 w-12" key={getAvatarKey(userProfile?.avatar, "dashboard")}>
                 <AvatarImage 
-                  src={userProfile?.avatar && userProfile.avatar.startsWith('data:image/') ? userProfile.avatar : ""} 
+                  src={getAvatarUrl(userProfile?.avatar)} 
                   onError={(e) => {
                     console.log('Avatar image failed to load, falling back to initials')
                     e.currentTarget.style.display = 'none'

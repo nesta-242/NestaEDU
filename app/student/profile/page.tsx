@@ -16,6 +16,7 @@ import { useTheme } from "next-themes"
 import { Camera, X, Sun, Moon, Monitor, User, Mail, Phone, GraduationCap, Loader2, Crop } from "lucide-react"
 import { ImageCropper } from "@/components/image-cropper"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getAvatarUrl, getAvatarKey, forceAvatarRefresh } from "@/lib/utils"
 
 interface UserProfile {
   firstName: string
@@ -75,19 +76,25 @@ export default function ProfilePage() {
 
   // Load profile data on component mount
   useEffect(() => {
+    // Clear browser image cache on page load
+    if (typeof window !== 'undefined') {
+      // Force refresh any existing avatar images
+      forceAvatarRefresh()
+    }
+    
     // Clear any cached avatar data from localStorage to start fresh
     const cachedProfile = localStorage.getItem('userProfile')
     if (cachedProfile) {
       try {
         const parsed = JSON.parse(cachedProfile)
-        // Clear avatar data from cached profile
+        // Clear avatar data from cached profile to force fresh load
         parsed.avatar = ""
         parsed.fullImage = ""
         localStorage.setItem('userProfile', JSON.stringify(parsed))
       } catch (error) {
         console.error('Error clearing cached avatar:', error)
       }
-        }
+    }
     
     const fetchProfile = async () => {
       setIsLoading(true) // Ensure loading state is set
@@ -149,39 +156,30 @@ export default function ProfilePage() {
           }
         }
       } catch (error) {
-        console.error('Error loading profile:', error)
-        // Only fallback to localStorage if fetch actually fails
+        console.error('Error fetching profile:', error)
+        // Fallback to localStorage on error
         const savedProfile = localStorage.getItem('userProfile')
         if (savedProfile) {
-          const parsedProfile = JSON.parse(savedProfile)
-          
-          // Ensure all fields are strings, not null
-          const sanitizedProfile = {
-            ...parsedProfile,
-            firstName: parsedProfile.firstName || "",
-            lastName: parsedProfile.lastName || "",
-            email: parsedProfile.email || "",
-            phone: parsedProfile.phone || "",
-            gradeLevel: parsedProfile.gradeLevel || "",
-            school: parsedProfile.school || "",
-            avatar: parsedProfile.avatar || "",
-            fullImage: parsedProfile.fullImage || ""
-          }
-          
-          setProfile(sanitizedProfile)
-          setOriginalProfile(sanitizedProfile)
-          if (sanitizedProfile.avatar) {
-            setAvatarPreview(sanitizedProfile.avatar)
-            setOriginalAvatar(sanitizedProfile.avatar)
-          }
-          if (sanitizedProfile.fullImage) {
-            setFullImagePreview(sanitizedProfile.fullImage)
+          try {
+            const parsedProfile = JSON.parse(savedProfile)
+            setProfile(parsedProfile)
+            setOriginalProfile(parsedProfile)
+            if (parsedProfile.avatar) {
+              setAvatarPreview(parsedProfile.avatar)
+              setOriginalAvatar(parsedProfile.avatar)
+            }
+            if (parsedProfile.fullImage) {
+              setFullImagePreview(parsedProfile.fullImage)
+            }
+          } catch (parseError) {
+            console.error('Error parsing cached profile:', parseError)
           }
         }
       } finally {
-        setIsLoading(false) // Always set loading to false when done
+        setIsLoading(false)
       }
     }
+
     fetchProfile()
   }, [])
 
@@ -511,19 +509,28 @@ export default function ProfilePage() {
       console.log('Dispatching profile update event with data:', updatedProfile)
       console.log('Avatar in updatedProfile:', updatedProfile.avatar)
       console.log('Avatar preview:', avatarPreview)
+      
+      // Clear browser cache for avatar images
+      if (typeof window !== 'undefined') {
+        forceAvatarRefresh()
+      }
+      
       window.dispatchEvent(
         new CustomEvent('profileUpdated', {
           detail: updatedProfile,
         }),
       )
 
-      toast({
-        title: 'Profile saved',
-        description: 'Your profile has been updated successfully.',
-      })
+      // Force a small delay to ensure cache clearing takes effect
+      setTimeout(() => {
+        toast({
+          title: 'Profile saved',
+          description: 'Your profile has been updated successfully.',
+        })
 
-      // Redirect to dashboard immediately
-      router.push('/student/dashboard')
+        // Redirect to dashboard immediately
+        router.push('/student/dashboard')
+      }, 100)
     } catch (error) {
       console.error('Error saving profile:', error)
       toast({
@@ -576,12 +583,16 @@ export default function ProfilePage() {
                     <TooltipTrigger asChild>
                       <Avatar 
                         className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
+                        key={getAvatarKey(avatarPreview, "profile")}
                         onClick={() => {
                           console.log('Avatar clicked - Debug info:')
                           console.log('fullImagePreview:', fullImagePreview ? 'exists' : 'not set')
                           console.log('avatarPreview:', avatarPreview ? 'exists' : 'not set')
                           console.log('profile.avatar:', profile.avatar ? 'exists' : 'not set')
                           console.log('profile.fullImage:', profile.fullImage ? 'exists' : 'not set')
+                          
+                          // Force refresh any existing avatar images
+                          forceAvatarRefresh()
                           
                           // If there's a full image available, use it for refocusing
                           if (fullImagePreview) {
@@ -604,7 +615,7 @@ export default function ProfilePage() {
                           }
                         }}
                       >
-                        <AvatarImage src={avatarPreview || ""} />
+                        <AvatarImage src={getAvatarUrl(avatarPreview)} />
                         <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </TooltipTrigger>
