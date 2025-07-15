@@ -209,7 +209,7 @@ export default function SignUpPage() {
               <PenTool className="h-8 w-8 text-primary" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <span className="text-2xl font-bold">Nesta Education</span>
+              <span className="text-2xl font-bold">Nesta Education <span className="text-amber-500">(Beta)</span></span>
             </Link>
           </div>
           <CardTitle className="text-2xl">Create Your Account</CardTitle>

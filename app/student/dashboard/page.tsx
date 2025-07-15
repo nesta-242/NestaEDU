@@ -84,6 +84,8 @@ export default function DashboardPage() {
   )
   const [userProfile, setUserProfile] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [userProfileLoaded, setUserProfileLoaded] = useState(false)
+  const [dashboardDataLoaded, setDashboardDataLoaded] = useState(false)
   const [showAllExams, setShowAllExams] = useState(false)
   const router = useRouter()
 
@@ -199,9 +201,8 @@ export default function DashboardPage() {
           console.log('Dashboard avatar from error fallback:', parsedProfile?.avatar)
           setUserProfile(parsedProfile)
         }
-      } finally {
-        setIsLoading(false)
       }
+      setUserProfileLoaded(true)
     }
     fetchUserProfile()
   }, [])
@@ -447,6 +448,7 @@ export default function DashboardPage() {
         
         console.log('Final stats object:', finalStats)
         setStats(finalStats)
+        setDashboardDataLoaded(true)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         setStats({
@@ -465,11 +467,18 @@ export default function DashboardPage() {
           weeklyChatActivity: [0, 0, 0, 0, 0, 0, 0],
           weeklyExamActivity: [0, 0, 0, 0, 0, 0, 0],
         })
+        // Still set dashboard data as loaded even on error to prevent infinite loading
+        setDashboardDataLoaded(true)
       }
     }
 
-    // Initial data fetch
-    fetchDashboardData().finally(() => setIsLoading(false))
+    // Initial data fetch - only set loading to false when both profile and data are loaded
+    fetchDashboardData().finally(() => {
+      // Ensure loading is set to false even if there are errors
+      if (userProfileLoaded) {
+        setIsLoading(false)
+      }
+    })
 
     // Listen for chat session updates
     const handleChatSessionUpdate = () => {
@@ -482,6 +491,28 @@ export default function DashboardPage() {
       window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
     }
   }, [router])
+
+  // Effect to set loading to false when both profile and data are loaded
+  useEffect(() => {
+    console.log('Loading state check:', { userProfileLoaded, dashboardDataLoaded, isLoading })
+    if (userProfileLoaded && dashboardDataLoaded) {
+      console.log('Both profile and dashboard data loaded - setting loading to false')
+      setIsLoading(false)
+    }
+  }, [userProfileLoaded, dashboardDataLoaded])
+
+  // Fallback timeout to prevent infinite loading (10 seconds)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.log('Dashboard loading timeout - forcing loading to false')
+        setIsLoading(false)
+        setDashboardDataLoaded(true)
+      }
+    }, 10000) // 10 seconds
+
+    return () => clearTimeout(timeout)
+  }, [isLoading])
 
   // Debug effect to monitor userProfile changes
   useEffect(() => {
@@ -563,11 +594,86 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading dashboard...</p>
+      <div className="space-y-6">
+        {/* Loading Header */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-12 w-12 bg-muted rounded-full animate-pulse"></div>
+                <div>
+                  <div className="h-6 w-48 bg-muted rounded animate-pulse mb-2"></div>
+                  <div className="h-4 w-32 bg-muted rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4 sm:mt-0">
+                <div className="h-10 w-32 bg-muted rounded animate-pulse"></div>
+                <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Loading Metrics */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="border-l-4 border-l-green-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+                <div className="h-4 w-4 bg-muted rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-12 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="h-3 w-16 bg-muted rounded animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
+        {/* Loading Charts */}
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-32 bg-muted rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-48 bg-muted rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 bg-muted rounded animate-pulse"></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-32 bg-muted rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-48 bg-muted rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 bg-muted rounded animate-pulse"></div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Loading Recent Activity */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-32 bg-muted rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-48 bg-muted rounded animate-pulse"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <div className="h-10 w-10 bg-muted rounded-full animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-muted rounded animate-pulse mb-2"></div>
+                    <div className="h-3 w-24 bg-muted rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -755,21 +861,28 @@ export default function DashboardPage() {
             {stats.examResults.length > 0 ? (
               <div className="space-y-3">
                 {(showAllExams ? stats.examResults : stats.examResults.slice(0, 4)).map((exam) => (
-                  <div key={exam.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {getScoreIcon(exam.percentage)}
-                      <div>
-                        <p className="font-medium text-sm">{capitalizeSubject(exam.subject)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {exam.score}/{exam.max_score} points
-                        </p>
+                  <Link 
+                    key={exam.id} 
+                    href={`/student/practice-exam?examId=${exam.id}`}
+                    className="block"
+                  >
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group active:bg-muted active:scale-98">
+                      <div className="flex items-center gap-3">
+                        {getScoreIcon(exam.percentage)}
+                        <div>
+                          <p className="font-medium text-sm group-hover:text-primary transition-colors">{capitalizeSubject(exam.subject)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {exam.score}/{exam.max_score} points
+                          </p>
+                        </div>
                       </div>
+                      <div className="text-right">
+                        <span className={`font-bold text-sm ${getScoreColor(exam.percentage)}`}>{exam.percentage}%</span>
+                        <p className="text-xs text-muted-foreground">{new Date(exam.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
-                    <div className="text-right">
-                      <span className={`font-bold text-sm ${getScoreColor(exam.percentage)}`}>{exam.percentage}%</span>
-                      <p className="text-xs text-muted-foreground">{new Date(exam.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
+                  </Link>
                 ))}
                 {stats.examResults.length > 4 && (
                   <div className="text-center pt-2">

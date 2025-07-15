@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useSearchParams } from "next/navigation"
 import {
   FileText,
   TrendingUp,
@@ -64,6 +65,9 @@ export default function PracticeExamPage() {
   const [selectedExam, setSelectedExam] = useState<DetailedExamResult | null>(null)
   const [isLoadingExam, setIsLoadingExam] = useState(false)
   const [activeTab, setActiveTab] = useState("new-exam")
+
+  const searchParams = useSearchParams()
+  const examIdParam = searchParams.get("examId")
 
   // Function to map route parameter subjects to display names
   const getSubjectDisplayName = (subjectRoute: string) => {
@@ -145,6 +149,14 @@ export default function PracticeExamPage() {
       window.removeEventListener("examCompleted", handleExamUpdate)
     }
   }, [])
+
+  useEffect(() => {
+    if (examIdParam) {
+      console.log('Exam ID found in URL, switching to past exams tab and loading exam:', examIdParam)
+      setActiveTab("past-exams")
+      loadDetailedExam(examIdParam)
+    }
+  }, [examIdParam])
 
   const loadDetailedExam = async (examId: string) => {
     console.log('Loading detailed exam for ID:', examId)

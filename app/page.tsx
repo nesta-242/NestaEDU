@@ -12,7 +12,7 @@ export default function Home() {
             <PenTool className="w-10 h-10 text-primary mx-auto" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight font-handwriting sm:text-5xl md:text-6xl mb-4">
-            Nesta Education (Beta)
+            Nesta Education <span className="text-amber-500">(Beta)</span>
           </h1>
           <div className="mb-4 text-lg text-muted-foreground font-code">
             {/* Mobile: stacked, Desktop: inline */}
