@@ -17,13 +17,10 @@ export default function Home() {
           <div className="mb-4 text-lg text-muted-foreground font-code">
             {/* Mobile: stacked, Desktop: inline */}
             <div className="block sm:hidden">
-              <div>✏️ learn through discovery.</div>
-              <div>📐 practice with precision.</div>
+              <div>Discover. Learn. Progress.</div>
             </div>
             <div className="hidden sm:flex items-center gap-2">
-              <span>✏️ learn through discovery</span>
-              <span>•</span>
-              <span>practice with precision 📐</span>
+              <span>Discover. Learn. Progress.</span>
             </div>
           </div>
 

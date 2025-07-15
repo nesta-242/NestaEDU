@@ -520,7 +520,7 @@ export default function PracticeExamPage() {
         <Button
           variant={activeTab === "new-exam" ? "default" : "outline"}
           size="lg"
-          className="flex items-center gap-2 text-lg"
+          className="flex items-center gap-2 px-6 py-3"
           onClick={() => setActiveTab("new-exam")}
         >
           <span role="img" aria-label="New Exam">🆕</span> New Exam
@@ -528,10 +528,10 @@ export default function PracticeExamPage() {
         <Button
           variant={activeTab === "past-exams" ? "default" : "outline"}
           size="lg"
-          className="flex items-center gap-2 text-lg"
+          className="flex items-center gap-2 px-6 py-3"
           onClick={() => setActiveTab("past-exams")}
         >
-          <span role="img" aria-label="Past Exams">📜</span> Past Exams
+          <span role="img" aria-label="Past Exams">📜</span> Past Exams ({examResults.length})
         </Button>
       </div>
       <div className="mt-6">

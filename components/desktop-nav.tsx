@@ -7,6 +7,32 @@ import { BookOpen, Home, MessageSquare, LogOut, Menu, PenTool, FileText } from "
 import { cn } from "@/lib/utils"
 import { ExamSafeLink } from "@/components/exam-safe-link"
 
+// Preload function for chat sessions
+const preloadChatSessions = () => {
+  // Only preload if we don't have recent cache
+  const cacheTimestamp = sessionStorage.getItem('chatHistoryCacheTimestamp')
+  if (!cacheTimestamp || Date.now() - parseInt(cacheTimestamp) > 5 * 60 * 1000) {
+    fetch('/api/chat-sessions')
+      .then(response => response.json())
+      .then(sessions => {
+        const chatHistory = sessions.map((session: any) => ({
+          id: session.id,
+          subject: session.subject,
+          topic: session.topic || '',
+          title: session.title || 'Conversation',
+          lastMessage: session.last_message || '',
+          timestamp: new Date(session.updated_at),
+          messageCount: session.message_count || 0,
+        }))
+        sessionStorage.setItem('chatHistoryCache', JSON.stringify(chatHistory))
+        sessionStorage.setItem('chatHistoryCacheTimestamp', Date.now().toString())
+      })
+      .catch(error => {
+        console.error('Preload failed:', error)
+      })
+  }
+}
+
 interface DesktopNavProps {
   isCollapsed: boolean
   onToggle: () => void
@@ -89,6 +115,12 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
                       isCollapsed ? "justify-center px-2" : "justify-start",
                     )}
                     title={isCollapsed ? link.label : undefined}
+                    onMouseEnter={() => {
+                      // Preload chat sessions when hovering over Past Sessions
+                      if (link.href === "/student/subjects") {
+                        preloadChatSessions()
+                      }
+                    }}
                   >
                     <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
                     {!isCollapsed && link.label}

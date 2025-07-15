@@ -9,6 +9,32 @@ import { Separator } from "@/components/ui/separator"
 import { Menu, Home, BookOpen, MessageSquare, User, FileText, Settings, LogOut, PenTool } from "lucide-react"
 import { ExamSafeLink } from "@/components/exam-safe-link"
 
+// Preload function for chat sessions
+const preloadChatSessions = () => {
+  // Only preload if we don't have recent cache
+  const cacheTimestamp = sessionStorage.getItem('chatHistoryCacheTimestamp')
+  if (!cacheTimestamp || Date.now() - parseInt(cacheTimestamp) > 5 * 60 * 1000) {
+    fetch('/api/chat-sessions')
+      .then(response => response.json())
+      .then(sessions => {
+        const chatHistory = sessions.map((session: any) => ({
+          id: session.id,
+          subject: session.subject,
+          topic: session.topic || '',
+          title: session.title || 'Conversation',
+          lastMessage: session.last_message || '',
+          timestamp: new Date(session.updated_at),
+          messageCount: session.message_count || 0,
+        }))
+        sessionStorage.setItem('chatHistoryCache', JSON.stringify(chatHistory))
+        sessionStorage.setItem('chatHistoryCacheTimestamp', Date.now().toString())
+      })
+      .catch(error => {
+        console.error('Preload failed:', error)
+      })
+  }
+}
+
 export function MobileNav() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -73,7 +99,16 @@ export function MobileNav() {
                 const Icon = item.icon
                 return (
                   <ExamSafeLink key={item.name} href={item.href} onClick={() => setOpen(false)}>
-                    <Button variant={item.current ? "secondary" : "ghost"} className="w-full justify-start gap-3 h-10">
+                    <Button 
+                      variant={item.current ? "secondary" : "ghost"} 
+                      className="w-full justify-start gap-3 h-10"
+                      onMouseEnter={() => {
+                        // Preload chat sessions when hovering over Past Sessions
+                        if (item.href === "/student/subjects") {
+                          preloadChatSessions()
+                        }
+                      }}
+                    >
                       <Icon className="h-4 w-4" />
                       {item.name}
                     </Button>

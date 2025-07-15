@@ -17,12 +17,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID not found' }, { status: 401 })
     }
     
-    console.log('Chat sessions GET - Fetching sessions for user:', userId)
-    
     // Get a fresh Prisma client
     prisma = await getPrisma()
     
-    console.log('Chat sessions GET - Fetching all sessions')
+    // Check if a specific session ID is requested
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('id')
+    
+    if (sessionId) {
+      // Fetch specific session
+      console.log('Chat sessions GET - Fetching specific session:', sessionId)
+      
+      const session = await prisma.chatSession.findFirst({
+        where: {
+          id: sessionId,
+          user_id: userId,
+        },
+      })
+      
+      if (!session) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      }
+      
+      console.log('Chat sessions GET - Found specific session')
+      return NextResponse.json(session)
+    }
+    
+    // Fetch all sessions
+    console.log('Chat sessions GET - Fetching all sessions for user:', userId)
     
     const sessions = await prisma.chatSession.findMany({
       where: {

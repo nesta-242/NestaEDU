@@ -44,10 +44,30 @@ interface ChatSession {
 export default function SubjectsPage() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([])
   const [activeTab, setActiveTab] = useState("math")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const { toast } = useToast()
   const router = useRouter()
 
+  // Check if we have cached data first
   useEffect(() => {
+    const cachedData = sessionStorage.getItem('chatHistoryCache')
+    const cacheTimestamp = sessionStorage.getItem('chatHistoryCacheTimestamp')
+    
+    if (cachedData && cacheTimestamp) {
+      const cacheAge = Date.now() - parseInt(cacheTimestamp)
+      // Use cache if it's less than 5 minutes old
+      if (cacheAge < 5 * 60 * 1000) {
+        try {
+          const parsedData = JSON.parse(cachedData)
+          setChatHistory(parsedData)
+          setIsInitialLoad(false)
+        } catch (error) {
+          console.error('Error parsing cached data:', error)
+        }
+      }
+    }
+    
     loadChatHistory()
     
     // Listen for chat session updates
@@ -63,6 +83,9 @@ export default function SubjectsPage() {
   }, [])
 
   const loadChatHistory = async () => {
+    if (isLoading) return // Prevent multiple simultaneous requests
+    
+    setIsLoading(true)
     try {
       const response = await fetch('/api/chat-sessions')
       if (response.ok) {
@@ -77,6 +100,10 @@ export default function SubjectsPage() {
           messageCount: session.message_count || 0,
         }))
         setChatHistory(chatHistory)
+        
+        // Cache the data
+        sessionStorage.setItem('chatHistoryCache', JSON.stringify(chatHistory))
+        sessionStorage.setItem('chatHistoryCacheTimestamp', Date.now().toString())
       } else {
         console.error('Failed to fetch chat sessions:', response.status)
         setChatHistory([])
@@ -89,6 +116,9 @@ export default function SubjectsPage() {
         variant: "destructive",
       })
       setChatHistory([])
+    } finally {
+      setIsLoading(false)
+      setIsInitialLoad(false)
     }
   }
 
@@ -281,6 +311,27 @@ export default function SubjectsPage() {
   const SubjectContent = ({ subject }: { subject: string }) => {
     const topics = getTopicsBySubject(subject)
 
+    // Show loading skeleton if still loading
+    if (isInitialLoad) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+              <div className="space-y-3">
+                {[1, 2].map((j) => (
+                  <div key={j} className="border rounded-lg p-4">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
     if (topics.length === 0) {
       return (
         <div className="text-center py-12">
@@ -468,13 +519,15 @@ export default function SubjectsPage() {
             variant={activeTab === "math" ? "default" : "outline"}
             onClick={() => setActiveTab("math")}
             className="flex items-center gap-2 px-6 py-3"
+            disabled={isLoading}
           >
-                              📐 {capitalizeSubject("Mathematics")}
+            📐 {capitalizeSubject("Mathematics")}
           </Button>
           <Button
             variant={activeTab === "science" ? "default" : "outline"}
             onClick={() => setActiveTab("science")}
             className="flex items-center gap-2 px-6 py-3"
+            disabled={isLoading}
           >
             🔬 Science
           </Button>
@@ -482,10 +535,19 @@ export default function SubjectsPage() {
             variant={activeTab === "general" ? "default" : "outline"}
             onClick={() => setActiveTab("general")}
             className="flex items-center gap-2 px-6 py-3"
+            disabled={isLoading}
           >
             📚 General
           </Button>
         </div>
+        
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+            <span className="text-sm text-muted-foreground">Refreshing conversations...</span>
+          </div>
+        )}
 
         {/* Content based on active tab */}
         <div className="mt-6">

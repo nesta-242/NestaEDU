@@ -182,6 +182,10 @@ export default function DashboardPage() {
             timestamp: session.updated_at,
             messageCount: session.message_count || 0,
           }))
+          
+          // Cache the sessions data for faster loading on subjects page
+          sessionStorage.setItem('chatHistoryCache', JSON.stringify(chatHistory))
+          sessionStorage.setItem('chatHistoryCacheTimestamp', Date.now().toString())
         } else {
           console.error('Chat sessions fetch failed:', chatRes.status, chatRes.statusText)
         }
@@ -448,7 +452,7 @@ export default function DashboardPage() {
 
   const getStreakMessage = () => {
     if (stats.currentStreak === 0) return "Start your learning streak today!"
-    if (stats.currentStreak === 1) return "Great start! Keep it going!"
+    if (stats.currentStreak === 1) return "Let's get started!"
     if (stats.currentStreak < 7) return `${stats.currentStreak} day streak! You're building momentum!`
     if (stats.currentStreak < 30) return `${stats.currentStreak} day streak! You're on fire!`
     return `${stats.currentStreak} day streak! You're unstoppable!`

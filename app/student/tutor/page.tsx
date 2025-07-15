@@ -88,15 +88,21 @@ export default function AITutorPage() {
         fetch(`/api/chat-sessions?id=${resumeId}`)
           .then(response => response.json())
           .then(session => {
+            console.log('Resuming session:', session)
             if (session && !session.error) {
+              console.log('Session messages:', session.messages)
               setSelectedSubject(session.subject)
-              setMessages(session.messages || [])
               setCurrentSessionId(resumeId)
+              
+              // Set the messages directly
+              setMessages(session.messages || [])
+              
               toast({
                 title: "Session Resumed",
                 description: `Continuing conversation: ${session.title}`,
               })
             } else {
+              console.error('Session not found or error:', session)
               toast({
                 title: "Session Not Found",
                 description: "The requested conversation could not be found.",
@@ -125,7 +131,7 @@ export default function AITutorPage() {
         setIsLoadingSession(false)
       }
     }
-  }, [searchParams, setMessages, toast])
+  }, [searchParams, toast])
 
   // Handle subject parameter from URL
   useEffect(() => {
@@ -149,6 +155,7 @@ export default function AITutorPage() {
 
   // Save/Update chat session to database
   useEffect(() => {
+    console.log('Messages changed:', messages.length, 'messages, isLoading:', isLoading)
     if (messages.length > 0 && !isLoading) {
       try {
         const sessionToSave = {
@@ -651,32 +658,32 @@ export default function AITutorPage() {
                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
                     <span className="text-xs">Upload</span>
                   </Button>
-                  <Button
-                    type="button"
-                    variant={showMathKeyboard ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setShowMathKeyboard(!showMathKeyboard)
-                      setShowCalculator(false)
-                    }}
-                    className="flex flex-col items-center justify-center h-10"
-                  >
-                    <Sigma className="h-4 w-4" />
-                    <span className="text-xs">Math Keyboard</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={showCalculator ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setShowCalculator(!showCalculator)
-                      setShowMathKeyboard(false)
-                    }}
-                    className="flex flex-col items-center justify-center h-10"
-                  >
-                    <CalculatorIcon className="h-4 w-4" />
-                    <span className="text-xs">Calculator</span>
-                  </Button>
+                                  <Button
+                  type="button"
+                  variant={showMathKeyboard ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowMathKeyboard(!showMathKeyboard)
+                    setShowCalculator(false)
+                  }}
+                  className="flex flex-col items-center justify-center h-10"
+                >
+                  <Sigma className="h-4 w-4" />
+                  <span className="text-xs">Math Keyboard</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={showCalculator ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowCalculator(!showCalculator)
+                    setShowMathKeyboard(false)
+                  }}
+                  className="flex flex-col items-center justify-center h-10"
+                >
+                  <CalculatorIcon className="h-4 w-4" />
+                  <span className="text-xs">Calculator</span>
+                </Button>
                 </div>
               </div>
               <div className="hidden md:flex items-center gap-2">
