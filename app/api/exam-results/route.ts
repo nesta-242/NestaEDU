@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, executeWithRetry } from '@/lib/db'
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +23,13 @@ export async function GET(request: NextRequest) {
 
     console.log('Exam results GET - Fetching results for user:', userId)
 
-    const results = await prisma.examResult.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: 20, // Limit to 20 most recent results
-    })
+    const results = await executeWithRetry(() => 
+      prisma.examResult.findMany({
+        where: { user_id: userId },
+        orderBy: { created_at: 'desc' },
+        take: 20, // Limit to 20 most recent results
+      })
+    )
 
     console.log('Exam results GET - Found', results.length, 'results')
 
