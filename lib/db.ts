@@ -70,17 +70,6 @@ export async function executeWithRetry<T>(
       lastError = error as Error
       console.error(`Database operation failed (attempt ${attempt}/${maxRetries}):`, error)
       
-      // If it's a prepared statement error, try to reconnect
-      if (error instanceof Error && error.message.includes('prepared statement') && attempt < maxRetries) {
-        try {
-          await prisma.$disconnect()
-          await prisma.$connect()
-          console.log(`Reconnected to database after attempt ${attempt}`)
-        } catch (reconnectError) {
-          console.error('Failed to reconnect:', reconnectError)
-        }
-      }
-      
       // Wait before retrying (exponential backoff)
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 100 // 200ms, 400ms, 800ms

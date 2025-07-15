@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, executeWithRetry, createPrismaClient } from '@/lib/db'
+import { prisma, createPrismaClient } from '@/lib/db'
 import { verifyToken } from '@/lib/jwt-auth'
 
 export const dynamic = 'force-dynamic';
@@ -33,11 +33,9 @@ export async function GET(request: NextRequest) {
     if (sessionId) {
       // Fetch specific session
       console.log('Chat sessions GET - Fetching specific session:', sessionId)
-      const session = await executeWithRetry(() => 
-        client.chatSession.findFirst({
-          where: { id: sessionId, user_id: userId },
-        })
-      )
+      const session = await client.chatSession.findFirst({
+        where: { id: sessionId, user_id: userId },
+      })
 
       if (!session) {
         console.log('Chat sessions GET - Session not found')
@@ -50,13 +48,11 @@ export async function GET(request: NextRequest) {
 
     // Fetch all sessions
     console.log('Chat sessions GET - Fetching all sessions')
-    const sessions = await executeWithRetry(() => 
-      client.chatSession.findMany({
-        where: { user_id: userId },
-        orderBy: { updated_at: 'desc' },
-        take: 50, // Limit to 50 most recent sessions
-      })
-    )
+    const sessions = await client.chatSession.findMany({
+      where: { user_id: userId },
+      orderBy: { updated_at: 'desc' },
+      take: 50, // Limit to 50 most recent sessions
+    })
 
     console.log('Chat sessions GET - Found', sessions.length, 'sessions')
     return NextResponse.json(sessions)
