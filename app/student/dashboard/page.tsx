@@ -224,13 +224,25 @@ export default function DashboardPage() {
           percentageType: typeof exam.percentage
         })))
         
-        const averageScore =
-          examResults.length > 0
-            ? Math.round(examResults.reduce((sum, exam) => {
-                console.log(`Adding percentage: ${exam.percentage} (type: ${typeof exam.percentage})`)
-                return sum + exam.percentage
-              }, 0) / examResults.length)
-            : 0
+        // Calculate average score with detailed debugging
+        let totalPercentage = 0
+        let validExams = 0
+        
+        examResults.forEach((exam, index) => {
+          const percentage = Number(exam.percentage)
+          console.log(`Exam ${index + 1}: ${exam.subject} - Raw percentage: ${exam.percentage}, Converted: ${percentage}, Type: ${typeof percentage}`)
+          
+          if (!isNaN(percentage) && percentage >= 0 && percentage <= 100) {
+            totalPercentage += percentage
+            validExams++
+            console.log(`  ✓ Valid percentage: ${percentage}, Running total: ${totalPercentage}`)
+          } else {
+            console.log(`  ✗ Invalid percentage: ${percentage} (skipping)`)
+          }
+        })
+        
+        const averageScore = validExams > 0 ? Math.round(totalPercentage / validExams) : 0
+        console.log(`Final calculation: ${totalPercentage} / ${validExams} = ${averageScore}%`)
             
         console.log('Calculated average score:', averageScore)
 
