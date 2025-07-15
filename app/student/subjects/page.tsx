@@ -35,9 +35,9 @@ interface ChatSession {
   subject: string
   topic: string
   title: string
-  lastMessage: string
-  timestamp: Date
-  messageCount: number
+  last_message: string
+  updated_at: string
+  message_count: number
   messages?: Message[]
 }
 
@@ -184,7 +184,7 @@ export default function SubjectsPage() {
   const getSessionsBySubject = (subject: string) => {
     return chatHistory
       .filter((session) => session.subject === subject)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }
 
   const getTopicsBySubject = (subject: string) => {
@@ -196,7 +196,7 @@ export default function SubjectsPage() {
   const getSessionsByTopic = (subject: string, topic: string) => {
     return chatHistory
       .filter((session) => session.subject === subject && session.topic === topic)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }
 
   const formatTimeAgo = (date: Date) => {
@@ -370,9 +370,9 @@ export default function SubjectsPage() {
                     <div className="flex-1 pr-8">
                       <CardTitle className="text-base font-medium">{session.title}</CardTitle>
                       <CardDescription className="text-sm mt-1">
-                        {session.lastMessage.length > 80
-                          ? `${session.lastMessage.substring(0, 80)}...`
-                          : session.lastMessage}
+                        {session.last_message.length > 80
+                          ? `${session.last_message.substring(0, 80)}...`
+                          : session.last_message}
                       </CardDescription>
                     </div>
                   </div>
@@ -381,11 +381,11 @@ export default function SubjectsPage() {
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />
-                      {session.messageCount} messages
+                      {session.message_count} messages
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {formatTimeAgo(session.timestamp)}
+                      {formatTimeAgo(new Date(session.updated_at))}
                     </div>
                   </div>
                 </CardContent>
@@ -430,9 +430,9 @@ export default function SubjectsPage() {
                           <div className="flex-1 pr-8">
                             <CardTitle className="text-base font-medium">{session.title}</CardTitle>
                             <CardDescription className="text-sm mt-1">
-                              {session.lastMessage.length > 80
-                                ? `${session.lastMessage.substring(0, 80)}...`
-                                : session.lastMessage}
+                              {session.last_message.length > 80
+                                ? `${session.last_message.substring(0, 80)}...`
+                                : session.last_message}
                             </CardDescription>
                           </div>
                         </div>
@@ -441,11 +441,11 @@ export default function SubjectsPage() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <MessageSquare className="h-3 w-3" />
-                            {session.messageCount} messages
+                            {session.message_count} messages
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {formatTimeAgo(session.timestamp)}
+                            {formatTimeAgo(new Date(session.updated_at))}
                           </div>
                         </div>
                       </CardContent>

@@ -33,19 +33,19 @@ interface ChatSession {
   subject: string
   topic: string
   title: string
-  lastMessage: string
-  timestamp: string
-  messageCount: number
+  last_message: string
+  updated_at: string
+  message_count: number
 }
 
 interface ExamResult {
   id: string
   subject: string
   score: number
-  maxScore: number
-  totalQuestions: number
+  max_score: number
+  total_questions: number
   percentage: number
-  date: string
+  created_at: string
 }
 
 interface DashboardStats {
@@ -152,6 +152,17 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    const loadUserProfile = () => {
+      try {
+        const profile = localStorage.getItem("userProfile")
+        if (profile) {
+          setUserProfile(JSON.parse(profile))
+        }
+      } catch (error) {
+        console.error("Error loading user profile:", error)
+      }
+    }
+
     const fetchUser = async () => {
       const res = await fetch('/api/auth/me')
       if (res.status === 401) {
@@ -161,6 +172,17 @@ export default function DashboardPage() {
       const data = await res.json()
       setUserProfile(data.user)
     }
+
+    // Load profile from localStorage first
+    loadUserProfile()
+
+    // Listen for profile updates
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent
+      setUserProfile(customEvent.detail)
+    }
+
+    window.addEventListener("profileUpdated", handleProfileUpdate)
 
     const fetchDashboardData = async () => {
       try {
@@ -216,7 +238,7 @@ export default function DashboardPage() {
 
         const learningSessions = chatHistory.length
         const recentSessions = chatHistory
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
           .slice(0, 5)
         const practiceExams = examResults.length
         
@@ -242,7 +264,7 @@ export default function DashboardPage() {
         // Process chat sessions for current week
         chatHistory.forEach((session) => {
           try {
-            const sessionDate = new Date(session.timestamp)
+            const sessionDate = new Date(session.updated_at)
             if (isDateInCurrentWeek(sessionDate)) {
               const dayIndex = getDayOfWeekIndex(sessionDate)
               weeklyChatActivity[dayIndex]++
@@ -255,7 +277,7 @@ export default function DashboardPage() {
         // Process exam results for current week
         examResults.forEach((exam) => {
           try {
-            const examDate = new Date(exam.date)
+            const examDate = new Date(exam.created_at)
             if (isDateInCurrentWeek(examDate)) {
               const dayIndex = getDayOfWeekIndex(examDate)
               weeklyExamActivity[dayIndex]++
@@ -280,13 +302,13 @@ export default function DashboardPage() {
         const activityDates = new Set<string>()
         chatHistory.forEach((session) => {
           try {
-            const d = new Date(session.timestamp)
+            const d = new Date(session.updated_at)
             activityDates.add(d.toISOString().slice(0, 10))
           } catch (e) {}
         })
         examResults.forEach((exam) => {
           try {
-            const d = new Date(exam.date)
+            const d = new Date(exam.created_at)
             activityDates.add(d.toISOString().slice(0, 10))
           } catch (e) {}
         })
@@ -323,14 +345,14 @@ export default function DashboardPage() {
             const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)
             const recentSessions = chatHistory.filter(session => {
               try {
-                return new Date(session.timestamp) >= twoWeeksAgo
+                return new Date(session.updated_at) >= twoWeeksAgo
               } catch (e) {
                 return false
               }
             }).length
             const previousSessions = chatHistory.filter(session => {
               try {
-                const sessionDate = new Date(session.timestamp)
+                const sessionDate = new Date(session.updated_at)
                 return sessionDate >= fourWeeksAgo && sessionDate < twoWeeksAgo
               } catch (e) {
                 return false
@@ -344,7 +366,7 @@ export default function DashboardPage() {
         // Calculate number of practice exams taken this week
         const examsThisWeek = examResults.filter(exam => {
           try {
-            const d = new Date(exam.date)
+            const d = new Date(exam.created_at)
             return isDateInCurrentWeek(d)
           } catch {
             return false
@@ -354,7 +376,7 @@ export default function DashboardPage() {
         // Calculate number of chat sessions this week
         const sessionsThisWeek = chatHistory.filter(session => {
           try {
-            const d = new Date(session.timestamp)
+            const d = new Date(session.updated_at)
             return isDateInCurrentWeek(d)
           } catch {
             return false
@@ -414,6 +436,7 @@ export default function DashboardPage() {
 
     return () => {
       window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
+      window.removeEventListener("profileUpdated", handleProfileUpdate)
     }
   }, [router])
 
@@ -621,9 +644,9 @@ export default function DashboardPage() {
                           <Badge variant="outline" className="text-xs">
                             {capitalizeSubject(session.subject)}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">{session.messageCount} messages</span>
+                          <span className="text-xs text-muted-foreground">{session.message_count} messages</span>
                           <span className="text-xs text-muted-foreground">•</span>
-                          <span className="text-xs text-muted-foreground">{formatRelativeTime(session.timestamp)}</span>
+                          <span className="text-xs text-muted-foreground">{formatRelativeTime(session.updated_at)}</span>
                         </div>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -674,13 +697,13 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-medium text-sm">{capitalizeSubject(exam.subject)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {exam.score}/{exam.maxScore} points
+                          {exam.score}/{exam.max_score} points
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className={`font-bold text-sm ${getScoreColor(exam.percentage)}`}>{exam.percentage}%</span>
-                      <p className="text-xs text-muted-foreground">{new Date(exam.date).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(exam.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
