@@ -6,43 +6,59 @@ export const dynamic = 'force-dynamic';
 
 // Get user ID from request headers (set by middleware)
 function getUserId(request: NextRequest): string | null {
-  return request.headers.get('x-user-id')
+  const userId = request.headers.get('x-user-id')
+  console.log('Chat sessions - User ID from headers:', userId)
+  return userId
 }
 
 // GET - Retrieve chat sessions for a user
 export async function GET(request: NextRequest) {
+  console.log('Chat sessions GET - Starting request')
+  
   try {
     const userId = getUserId(request)
     if (!userId) {
+      console.error('Chat sessions GET - No user ID found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('Chat sessions GET - Fetching sessions for user:', userId)
 
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('id')
 
     if (sessionId) {
       // Fetch specific session
+      console.log('Chat sessions GET - Fetching specific session:', sessionId)
       const session = await prisma.chatSession.findFirst({
         where: { id: sessionId, user_id: userId },
       })
 
       if (!session) {
+        console.log('Chat sessions GET - Session not found')
         return NextResponse.json({ error: 'Session not found' }, { status: 404 })
       }
 
+      console.log('Chat sessions GET - Returning specific session')
       return NextResponse.json(session)
     }
 
     // Fetch all sessions
+    console.log('Chat sessions GET - Fetching all sessions')
     const sessions = await prisma.chatSession.findMany({
       where: { user_id: userId },
       orderBy: { updated_at: 'desc' },
       take: 50, // Limit to 50 most recent sessions
     })
 
+    console.log('Chat sessions GET - Found', sessions.length, 'sessions')
     return NextResponse.json(sessions)
   } catch (error) {
-    console.error('Error fetching chat sessions:', error)
+    console.error('Chat sessions GET - Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     
     // Check if it's a database connection error
     if (error instanceof Error && error.message.includes('Can\'t reach database server')) {

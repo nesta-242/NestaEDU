@@ -67,7 +67,9 @@ export const config = {
   matcher: [
     '/student/:path*',
     '/api/chat',
+    '/api/chat-sessions',
     '/api/chat-sessions/:path*',
+    '/api/exam-results',
     '/api/exam-results/:path*',
     '/api/generate-exam',
     '/api/grade-exam',

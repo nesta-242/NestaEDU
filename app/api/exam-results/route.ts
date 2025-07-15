@@ -5,22 +5,31 @@ export const dynamic = 'force-dynamic';
 
 // Get user ID from request headers (set by middleware)
 function getUserId(request: NextRequest): string | null {
-  return request.headers.get('x-user-id')
+  const userId = request.headers.get('x-user-id')
+  console.log('Exam results - User ID from headers:', userId)
+  return userId
 }
 
 // GET - Retrieve exam results for a user
 export async function GET(request: NextRequest) {
+  console.log('Exam results GET - Starting request')
+  
   try {
     const userId = getUserId(request)
     if (!userId) {
+      console.error('Exam results GET - No user ID found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('Exam results GET - Fetching results for user:', userId)
 
     const results = await prisma.examResult.findMany({
       where: { user_id: userId },
       orderBy: { created_at: 'desc' },
       take: 20, // Limit to 20 most recent results
     })
+
+    console.log('Exam results GET - Found', results.length, 'results')
 
     console.log('Raw exam results from database:', results.map(r => ({
       id: r.id,
@@ -44,9 +53,14 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    console.log('Exam results GET - Returning processed results')
     return NextResponse.json(processedResults)
   } catch (error) {
-    console.error('Error fetching exam results:', error)
+    console.error('Exam results GET - Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     
     // Check if it's a database connection error
     if (error instanceof Error && error.message.includes('Can\'t reach database server')) {
