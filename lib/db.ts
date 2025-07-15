@@ -4,11 +4,9 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Create Prisma client with error handling
-let prisma: PrismaClient
-
-try {
-  console.log('Initializing Prisma client...')
+// Create a new Prisma client instance for each request in production
+export function createPrismaClient(): PrismaClient {
+  console.log('Creating new Prisma client instance...')
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set')
   
   // Modify DATABASE_URL for serverless environments to avoid prepared statement conflicts
@@ -19,7 +17,7 @@ try {
     databaseUrl = `${databaseUrl}${separator}connection_limit=1&pool_timeout=0&prepared_statements=false&sslmode=require`
   }
   
-  prisma = globalForPrisma.prisma ?? new PrismaClient({
+  return new PrismaClient({
     log: ['query', 'info', 'warn', 'error'],
     datasources: {
       db: {
@@ -27,31 +25,31 @@ try {
       },
     },
   })
-  
-  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-  
-  // Test the connection with retry logic
-  const testConnection = async () => {
-    try {
-      await prisma.$connect()
-      console.log('✅ Database connection successful')
-    } catch (error) {
-      console.error('❌ Database connection failed:', error)
-      console.error('Please check your DATABASE_URL in .env file')
-      
-      // In production, try to disconnect and reconnect
-      if (process.env.NODE_ENV === 'production') {
-        try {
-          await prisma.$disconnect()
-          console.log('Disconnected from database, will reconnect on next request')
-        } catch (disconnectError) {
-          console.error('Error disconnecting:', disconnectError)
-        }
-      }
-    }
+}
+
+// For development, use a singleton instance
+let prisma: PrismaClient
+
+try {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Initializing Prisma client for development...')
+    prisma = globalForPrisma.prisma ?? createPrismaClient()
+    
+    if (!globalForPrisma.prisma) globalForPrisma.prisma = prisma
+    
+    // Test the connection
+    prisma.$connect()
+      .then(() => {
+        console.log('✅ Database connection successful')
+      })
+      .catch((error) => {
+        console.error('❌ Database connection failed:', error)
+        console.error('Please check your DATABASE_URL in .env file')
+      })
+  } else {
+    // In production, create a dummy instance (will be replaced per request)
+    prisma = {} as PrismaClient
   }
-  
-  testConnection()
 } catch (error) {
   console.error('❌ Prisma client initialization failed:', error)
   // Create a mock client for development

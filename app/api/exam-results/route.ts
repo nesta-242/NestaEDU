@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, executeWithRetry } from '@/lib/db'
+import { prisma, executeWithRetry, createPrismaClient } from '@/lib/db'
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +14,9 @@ function getUserId(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   console.log('Exam results GET - Starting request')
   
+  // Create a new Prisma client for this request in production
+  const client = process.env.NODE_ENV === 'production' ? createPrismaClient() : prisma
+  
   try {
     const userId = getUserId(request)
     if (!userId) {
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest) {
     console.log('Exam results GET - Fetching results for user:', userId)
 
     const results = await executeWithRetry(() => 
-      prisma.examResult.findMany({
+      client.examResult.findMany({
         where: { user_id: userId },
         orderBy: { created_at: 'desc' },
         take: 20, // Limit to 20 most recent results
@@ -83,6 +86,15 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
+  } finally {
+    // Clean up the client in production
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await client.$disconnect()
+      } catch (error) {
+        console.error('Error disconnecting client:', error)
+      }
+    }
   }
 }
 

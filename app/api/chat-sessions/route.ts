@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, executeWithRetry } from '@/lib/db'
+import { prisma, executeWithRetry, createPrismaClient } from '@/lib/db'
 import { verifyToken } from '@/lib/jwt-auth'
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +14,9 @@ function getUserId(request: NextRequest): string | null {
 // GET - Retrieve chat sessions for a user
 export async function GET(request: NextRequest) {
   console.log('Chat sessions GET - Starting request')
+  
+  // Create a new Prisma client for this request in production
+  const client = process.env.NODE_ENV === 'production' ? createPrismaClient() : prisma
   
   try {
     const userId = getUserId(request)
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       // Fetch specific session
       console.log('Chat sessions GET - Fetching specific session:', sessionId)
       const session = await executeWithRetry(() => 
-        prisma.chatSession.findFirst({
+        client.chatSession.findFirst({
           where: { id: sessionId, user_id: userId },
         })
       )
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
     // Fetch all sessions
     console.log('Chat sessions GET - Fetching all sessions')
     const sessions = await executeWithRetry(() => 
-      prisma.chatSession.findMany({
+      client.chatSession.findMany({
         where: { user_id: userId },
         orderBy: { updated_at: 'desc' },
         take: 50, // Limit to 50 most recent sessions
@@ -83,6 +86,15 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
+  } finally {
+    // Clean up the client in production
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await client.$disconnect()
+      } catch (error) {
+        console.error('Error disconnecting client:', error)
+      }
+    }
   }
 }
 
