@@ -62,7 +62,7 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
   const studentLinks = [
     { href: "/student/dashboard", label: "Dashboard", icon: Home },
     { href: "/student/tutor", label: "Personalized AI Tutor", icon: MessageSquare },
-    { href: "/student/subjects", label: "Past Sessions", icon: BookOpen },
+    { href: "/student/subjects", label: "Conversation History", icon: BookOpen },
     { href: "/student/practice-exam", label: "Practice Exams", icon: FileText },
   ]
 

@@ -200,9 +200,9 @@ export default function DashboardPage() {
             subject: session.subject,
             topic: session.topic || '',
             title: session.title || 'Conversation',
-            lastMessage: session.last_message || '',
-            timestamp: session.updated_at,
-            messageCount: session.message_count || 0,
+            last_message: session.last_message || '',
+            updated_at: session.updated_at,
+            message_count: session.message_count || 0,
           }))
           
           // Cache the sessions data for faster loading on subjects page
@@ -223,11 +223,11 @@ export default function DashboardPage() {
             id: result.id,
             subject: getSubjectDisplayName(result.subject), // Convert route parameter to display name
             score: result.score,
-            maxScore: result.max_score,
+            max_score: result.max_score,
             percentage: result.percentage,
-            totalQuestions: result.total_questions,
-            timeSpent: result.time_spent || 0,
-            date: result.created_at,
+            total_questions: result.total_questions,
+            time_spent: result.time_spent || 0,
+            created_at: result.created_at,
           }))
         } else {
           console.error('Exam results fetch failed:', examRes.status, examRes.statusText)

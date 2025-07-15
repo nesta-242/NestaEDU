@@ -53,7 +53,7 @@ export function MobileNav() {
       current: pathname === "/student/tutor",
     },
     {
-      name: "Past Sessions",
+      name: "Conversation History",
       href: "/student/subjects",
       icon: BookOpen,
       current: pathname === "/student/subjects",
