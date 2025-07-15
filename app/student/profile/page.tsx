@@ -82,20 +82,6 @@ export default function ProfilePage() {
       forceAvatarRefresh()
     }
     
-    // Clear any cached avatar data from localStorage to start fresh
-    const cachedProfile = localStorage.getItem('userProfile')
-    if (cachedProfile) {
-      try {
-        const parsed = JSON.parse(cachedProfile)
-        // Clear avatar data from cached profile to force fresh load
-        parsed.avatar = ""
-        parsed.fullImage = ""
-        localStorage.setItem('userProfile', JSON.stringify(parsed))
-      } catch (error) {
-        console.error('Error clearing cached avatar:', error)
-      }
-    }
-    
     const fetchProfile = async () => {
       setIsLoading(true) // Ensure loading state is set
       try {
@@ -119,11 +105,21 @@ export default function ProfilePage() {
           setProfile(sanitizedUser)
           setOriginalProfile(sanitizedUser)
           localStorage.setItem('userProfile', JSON.stringify(sanitizedUser))
-          // Clear any existing avatar preview to start fresh
-          setAvatarPreview("")
-          setFullImagePreview("")
+          
+          // Restore existing avatar to preview if it exists
           if (sanitizedUser.avatar) {
+            setAvatarPreview(sanitizedUser.avatar)
             setOriginalAvatar(sanitizedUser.avatar)
+          } else {
+            setAvatarPreview("")
+            setOriginalAvatar("")
+          }
+          
+          // Restore full image if it exists
+          if (sanitizedUser.fullImage) {
+            setFullImagePreview(sanitizedUser.fullImage)
+          } else {
+            setFullImagePreview("")
           }
         } else {
           // Only fallback to localStorage if API actually fails
@@ -255,7 +251,7 @@ export default function ProfilePage() {
       profile.gradeLevel !== originalProfile.gradeLevel ||
       profile.school !== originalProfile.school
 
-    // Check if avatar has changed
+    // Check if avatar has changed - compare current preview with original avatar
     const avatarChanged = avatarPreview !== originalAvatar
 
     // Check if theme has changed
@@ -418,6 +414,7 @@ export default function ProfilePage() {
       avatar: "", // Set to empty string instead of undefined
       fullImage: "", // Clear the full image too
     }))
+    setOriginalAvatar("") // Also clear the original avatar
   }
 
   const validateForm = (): boolean => {
@@ -583,7 +580,7 @@ export default function ProfilePage() {
                     <TooltipTrigger asChild>
                       <Avatar 
                         className="h-24 w-24 cursor-pointer hover:opacity-80 transition-opacity"
-                        key={getAvatarKey(avatarPreview, "profile")}
+                        key={getAvatarKey(avatarPreview || profile.avatar, "profile")}
                         onClick={() => {
                           console.log('Avatar clicked - Debug info:')
                           console.log('fullImagePreview:', fullImagePreview ? 'exists' : 'not set')
@@ -615,7 +612,7 @@ export default function ProfilePage() {
                           }
                         }}
                       >
-                        <AvatarImage src={getAvatarUrl(avatarPreview)} />
+                        <AvatarImage src={getAvatarUrl(avatarPreview || profile.avatar)} />
                         <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </TooltipTrigger>
@@ -624,7 +621,7 @@ export default function ProfilePage() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                {avatarPreview && (
+                {avatarPreview || profile.avatar ? (
                   <Button
                     variant="destructive"
                     size="sm"
@@ -633,7 +630,7 @@ export default function ProfilePage() {
                   >
                     <X className="h-3 w-3" />
                   </Button>
-                )}
+                ) : null}
               </div>
 
               <div className="text-center">
