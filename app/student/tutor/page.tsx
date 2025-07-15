@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Send, ImageIcon, CalculatorIcon, Sigma, Bot, Loader2, X, BookOpen, FlaskConical, ArrowRight } from "lucide-react"
 import { MathKeyboard } from "@/components/math-keyboard"
-import { capitalizeSubject } from "@/lib/utils"
+import { capitalizeSubject, forceAvatarRefresh } from "@/lib/utils"
 import { Calculator } from "@/components/calculator"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
@@ -68,7 +68,10 @@ export default function AITutorPage() {
     // Listen for profile updates
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
+      console.log('Profile update event received in tutor:', customEvent.detail)
       setUserProfile(customEvent.detail)
+      // Force avatar refresh to ensure immediate visual update
+      forceAvatarRefresh()
     }
 
     window.addEventListener("profileUpdated", handleProfileUpdate)

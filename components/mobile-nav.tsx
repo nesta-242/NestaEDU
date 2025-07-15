@@ -114,7 +114,7 @@ export function MobileNav() {
           <div className="flex items-center gap-2 px-2 py-4">
             <ExamSafeLink href="/student/dashboard" className="flex items-center gap-2">
               <PenTool className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Nesta Education</span>
+              <span className="font-bold text-lg">Nesta Education (Beta)</span>
             </ExamSafeLink>
           </div>
 

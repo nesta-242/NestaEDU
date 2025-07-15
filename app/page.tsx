@@ -12,7 +12,7 @@ export default function Home() {
             <PenTool className="w-10 h-10 text-primary mx-auto" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight font-handwriting sm:text-5xl md:text-6xl mb-4">
-            Nesta Education
+            Nesta Education (Beta)
           </h1>
           <div className="mb-4 text-lg text-muted-foreground font-code">
             {/* Mobile: stacked, Desktop: inline */}
@@ -61,8 +61,18 @@ export default function Home() {
           </div>
         </main>
 
+        {/* ---------- BETA DISCLAIMER ---------- */}
+        <div className="mt-8 text-center">
+          <div className="inline-block sketch-border p-4 bg-card/80 rounded-lg max-w-2xl">
+            <p className="text-sm font-notebook text-muted-foreground leading-relaxed">
+              🚧 Beta Version Disclaimer<br />
+              This platform is currently in beta testing. Features, content, and performance are still being actively developed and improved. While we strive to provide accurate, helpful, and consistent results, users may occasionally encounter incomplete features, inaccuracies, or unexpected behavior.
+            </p>
+          </div>
+        </div>
+
         {/* ---------- FOOTER ---------- */}
-        <footer className="mt-12 text-center">
+        <footer className="mt-8 text-center">
           <div className="inline-block sketch-border p-4 bg-card/80 rounded-lg">
             <p className="text-sm font-code text-muted-foreground">© 2025 Nesta Technologies</p>
           </div>

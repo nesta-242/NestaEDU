@@ -50,6 +50,16 @@ export function forceAvatarRefresh(): void {
     }
   })
   
+  // Also find and refresh Avatar components by their key
+  const avatarComponents = document.querySelectorAll('[data-avatar-key]')
+  avatarComponents.forEach(avatar => {
+    // Force a re-render by updating the data attribute
+    const currentKey = avatar.getAttribute('data-avatar-key')
+    if (currentKey) {
+      avatar.setAttribute('data-avatar-key', `${currentKey}-${Date.now()}`)
+    }
+  })
+  
   // Dispatch a custom event to notify components
   window.dispatchEvent(new CustomEvent('avatarRefresh', { 
     detail: { timestamp: Date.now() } 

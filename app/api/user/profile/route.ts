@@ -4,26 +4,20 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@/lib/jwt-auth'
-import { API_CONFIG } from '../../../../config/api-keys'
 
 // Create Supabase client function to handle runtime configuration
 function createSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || API_CONFIG.SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || API_CONFIG.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   // Validate configuration at runtime
-  if (!supabaseUrl || supabaseUrl === 'your-supabase-url') {
+  if (!supabaseUrl) {
     throw new Error('Supabase URL not configured')
   }
 
-  if (!supabaseServiceKey || supabaseServiceKey === 'your-supabase-service-role-key') {
+  if (!supabaseServiceKey) {
     throw new Error('Supabase service role key not configured')
   }
-
-  // Log configuration for debugging (remove in production)
-  console.log('Supabase URL:', supabaseUrl)
-  console.log('Service role key length:', supabaseServiceKey?.length || 0)
-  console.log('Service role key starts with:', supabaseServiceKey?.substring(0, 20) + '...')
 
   return createClient(supabaseUrl, supabaseServiceKey)
 }

@@ -201,18 +201,32 @@ export default function DashboardPage() {
         avatar: customEvent.detail?.avatar || userProfile?.avatar || null
       }
       
+      // Immediately update state and localStorage
       setUserProfile(updatedProfile)
-      // Also update localStorage to ensure consistency
       localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
+      
+      // Force avatar refresh to ensure immediate visual update
+      forceAvatarRefresh()
+      
       console.log('Profile updated, new userProfile should be:', updatedProfile)
       console.log('Avatar in updatedProfile:', updatedProfile.avatar)
+      
+      // Optionally fetch from API to ensure consistency (but don't wait for it)
+      fetchUser().catch(error => {
+        console.error('Error fetching updated profile from API:', error)
+      })
     }
 
     // Listen for avatar refresh events
     const handleAvatarRefresh = (e: Event) => {
       console.log('Avatar refresh event received, forcing re-render')
-      // Force a re-render by updating the state
-      setUserProfile((prev: any) => ({ ...prev }))
+      // Force a re-render by updating the state with a new object
+      setUserProfile((prev: any) => {
+        const newProfile = { ...prev }
+        // Add a timestamp to force React to see it as a new object
+        newProfile._lastUpdate = Date.now()
+        return newProfile
+      })
     }
 
     window.addEventListener("profileUpdated", handleProfileUpdate)
@@ -579,7 +593,11 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-12 w-12" key={getAvatarKey(userProfile?.avatar, "dashboard")}>
+              <Avatar 
+                className="h-12 w-12" 
+                key={`dashboard-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}-${userProfile?._lastUpdate || Date.now()}`}
+                data-avatar-key={`dashboard-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}`}
+              >
                 <AvatarImage 
                   src={getAvatarUrl(userProfile?.avatar)} 
                   onError={(e) => {

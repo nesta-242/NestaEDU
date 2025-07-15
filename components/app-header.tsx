@@ -45,14 +45,22 @@ export function AppHeader({ title }: AppHeaderProps) {
     // Also listen for custom events when localStorage is updated from the same tab
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
+      console.log('Profile update event received in header:', customEvent.detail)
       setUserProfile(customEvent.detail)
+      // Force avatar refresh to ensure immediate visual update
+      forceAvatarRefresh()
     }
 
     // Listen for avatar refresh events
     const handleAvatarRefresh = (e: Event) => {
       console.log('Avatar refresh event received in header, forcing re-render')
-      // Force a re-render by updating the state
-      setUserProfile((prev: any) => ({ ...prev }))
+      // Force a re-render by updating the state with a new object
+      setUserProfile((prev: any) => {
+        const newProfile = { ...prev }
+        // Add a timestamp to force React to see it as a new object
+        newProfile._lastUpdate = Date.now()
+        return newProfile
+      })
     }
 
     window.addEventListener("storage", handleStorageChange)
@@ -92,7 +100,11 @@ export function AppHeader({ title }: AppHeaderProps) {
       <div className="ml-auto flex items-center gap-2">
         <ExamSafeLink href="/student/profile">
           <Button variant="ghost" size="icon" className="rounded-full p-1">
-            <Avatar className="h-8 w-8" key={getAvatarKey(userProfile?.avatar, "header")}>
+            <Avatar 
+              className="h-8 w-8" 
+              key={`header-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}-${userProfile?._lastUpdate || Date.now()}`}
+              data-avatar-key={`header-avatar-${userProfile?.avatar?.substring(0, 50) || 'no-avatar'}`}
+            >
               <AvatarImage
                 src={getAvatarUrl(userProfile?.avatar)}
                 alt={getUserName()}
