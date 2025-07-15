@@ -472,13 +472,8 @@ export default function DashboardPage() {
       }
     }
 
-    // Initial data fetch - only set loading to false when both profile and data are loaded
-    fetchDashboardData().finally(() => {
-      // Ensure loading is set to false even if there are errors
-      if (userProfileLoaded) {
-        setIsLoading(false)
-      }
-    })
+    // Initial data fetch
+    fetchDashboardData()
 
     // Listen for chat session updates
     const handleChatSessionUpdate = () => {
@@ -501,7 +496,23 @@ export default function DashboardPage() {
     }
   }, [userProfileLoaded, dashboardDataLoaded])
 
-  // Fallback timeout to prevent infinite loading (10 seconds)
+  // Effect to set loading to false when user profile is loaded (even if dashboard data fails)
+  useEffect(() => {
+    if (userProfileLoaded && isLoading) {
+      // If we have the user profile but dashboard data is taking too long, show the dashboard anyway
+      const timeout = setTimeout(() => {
+        if (isLoading && !dashboardDataLoaded) {
+          console.log('User profile loaded but dashboard data taking too long - showing dashboard anyway')
+          setIsLoading(false)
+          setDashboardDataLoaded(true)
+        }
+      }, 3000) // 3 seconds instead of 10
+
+      return () => clearTimeout(timeout)
+    }
+  }, [userProfileLoaded, isLoading, dashboardDataLoaded])
+
+  // Fallback timeout to prevent infinite loading (5 seconds)
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading) {
@@ -509,7 +520,7 @@ export default function DashboardPage() {
         setIsLoading(false)
         setDashboardDataLoaded(true)
       }
-    }, 10000) // 10 seconds
+    }, 5000) // 5 seconds instead of 10
 
     return () => clearTimeout(timeout)
   }, [isLoading])
