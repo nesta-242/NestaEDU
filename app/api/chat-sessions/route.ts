@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, createPrismaClient } from '@/lib/db'
+import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/jwt-auth'
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +15,6 @@ function getUserId(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   console.log('Chat sessions GET - Starting request')
   
-  // Create a new Prisma client for this request in production
-  const client = process.env.NODE_ENV === 'production' ? createPrismaClient() : prisma
-  
   try {
     const userId = getUserId(request)
     if (!userId) {
@@ -31,15 +28,11 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('id')
 
     if (sessionId) {
-      // Fetch specific session using raw SQL to avoid prepared statement conflicts
+      // Fetch specific session
       console.log('Chat sessions GET - Fetching specific session:', sessionId)
-      const sessions = await client.$queryRaw`
-        SELECT id, user_id, subject, topic, title, last_message, message_count, messages, created_at, updated_at
-        FROM chat_sessions 
-        WHERE id = ${sessionId} AND user_id = ${userId}
-        LIMIT 1
-      `
-      const session = Array.isArray(sessions) ? sessions[0] : null
+      const session = await prisma.chatSession.findFirst({
+        where: { id: sessionId, user_id: userId },
+      })
 
       if (!session) {
         console.log('Chat sessions GET - Session not found')
@@ -50,18 +43,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(session)
     }
 
-    // Fetch all sessions using raw SQL to avoid prepared statement conflicts
+    // Fetch all sessions
     console.log('Chat sessions GET - Fetching all sessions')
-    const sessions = await client.$queryRaw`
-      SELECT id, user_id, subject, topic, title, last_message, message_count, messages, created_at, updated_at
-      FROM chat_sessions 
-      WHERE user_id = ${userId}
-      ORDER BY updated_at DESC
-      LIMIT 50
-    `
+    const sessions = await prisma.chatSession.findMany({
+      where: { user_id: userId },
+      orderBy: { updated_at: 'desc' },
+      take: 50, // Limit to 50 most recent sessions
+    })
 
-    console.log('Chat sessions GET - Found', Array.isArray(sessions) ? sessions.length : 0, 'sessions')
-    return NextResponse.json(sessions || [])
+    console.log('Chat sessions GET - Found', sessions.length, 'sessions')
+    return NextResponse.json(sessions)
   } catch (error) {
     console.error('Chat sessions GET - Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -88,15 +79,6 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
-  } finally {
-    // Clean up the client in production
-    if (process.env.NODE_ENV === 'production') {
-      try {
-        await client.$disconnect()
-      } catch (error) {
-        console.error('Error disconnecting client:', error)
-      }
-    }
   }
 }
 

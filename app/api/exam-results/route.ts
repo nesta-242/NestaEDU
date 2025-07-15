@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, createPrismaClient } from '@/lib/db'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +14,6 @@ function getUserId(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   console.log('Exam results GET - Starting request')
   
-  // Create a new Prisma client for this request in production
-  const client = process.env.NODE_ENV === 'production' ? createPrismaClient() : prisma
-  
   try {
     const userId = getUserId(request)
     if (!userId) {
@@ -26,26 +23,22 @@ export async function GET(request: NextRequest) {
 
     console.log('Exam results GET - Fetching results for user:', userId)
 
-    // Fetch exam results using raw SQL to avoid prepared statement conflicts
-    const results = await client.$queryRaw`
-      SELECT id, user_id, subject, score, max_score, percentage, total_questions, time_spent, answers, feedback, created_at
-      FROM exam_results 
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-      LIMIT 20
-    `
+    const results = await prisma.examResult.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: 20, // Limit to 20 most recent results
+    })
 
-    const examResults = Array.isArray(results) ? results : []
-    console.log('Exam results GET - Found', examResults.length, 'results')
+    console.log('Exam results GET - Found', results.length, 'results')
 
-    console.log('Raw exam results from database:', examResults.map((r: any) => ({
+    console.log('Raw exam results from database:', results.map(r => ({
       id: r.id,
       percentage: r.percentage,
       percentageType: typeof r.percentage
     })))
 
     // Process results to include question results count
-    const processedResults = examResults.map((result: any) => {
+    const processedResults = results.map(result => {
       let questionResultsCount = 0
       if (result.answers && typeof result.answers === 'object') {
         const answersData = result.answers as any
@@ -88,15 +81,6 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
-  } finally {
-    // Clean up the client in production
-    if (process.env.NODE_ENV === 'production') {
-      try {
-        await client.$disconnect()
-      } catch (error) {
-        console.error('Error disconnecting client:', error)
-      }
-    }
   }
 }
 
