@@ -12,9 +12,11 @@ export function createPrismaClient(): PrismaClient {
   // Modify DATABASE_URL for serverless environments to avoid prepared statement conflicts
   let databaseUrl = process.env.DATABASE_URL
   if (process.env.NODE_ENV === 'production' && databaseUrl) {
-    // Add connection parameters to disable prepared statements and optimize for serverless
+    // Add parameters to disable prepared statements and force new connections
     const separator = databaseUrl.includes('?') ? '&' : '?'
-    databaseUrl = `${databaseUrl}${separator}connection_limit=1&pool_timeout=0&prepared_statements=false&sslmode=require`
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(7)
+    databaseUrl = `${databaseUrl}${separator}connection_limit=1&pool_timeout=0&application_name=prisma_${timestamp}_${randomId}&options=-c%20plan_cache_mode=force_generic_plan&sslmode=require`
   }
   
   return new PrismaClient({

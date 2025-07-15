@@ -26,22 +26,26 @@ export async function GET(request: NextRequest) {
 
     console.log('Exam results GET - Fetching results for user:', userId)
 
-    const results = await client.examResult.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      take: 20, // Limit to 20 most recent results
-    })
+    // Fetch exam results using raw SQL to avoid prepared statement conflicts
+    const results = await client.$queryRaw`
+      SELECT id, user_id, subject, score, max_score, percentage, total_questions, time_spent, answers, feedback, created_at
+      FROM exam_results 
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT 20
+    `
 
-    console.log('Exam results GET - Found', results.length, 'results')
+    const examResults = Array.isArray(results) ? results : []
+    console.log('Exam results GET - Found', examResults.length, 'results')
 
-    console.log('Raw exam results from database:', results.map(r => ({
+    console.log('Raw exam results from database:', examResults.map((r: any) => ({
       id: r.id,
       percentage: r.percentage,
       percentageType: typeof r.percentage
     })))
 
     // Process results to include question results count
-    const processedResults = results.map(result => {
+    const processedResults = examResults.map((result: any) => {
       let questionResultsCount = 0
       if (result.answers && typeof result.answers === 'object') {
         const answersData = result.answers as any

@@ -31,11 +31,15 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('id')
 
     if (sessionId) {
-      // Fetch specific session
+      // Fetch specific session using raw SQL to avoid prepared statement conflicts
       console.log('Chat sessions GET - Fetching specific session:', sessionId)
-      const session = await client.chatSession.findFirst({
-        where: { id: sessionId, user_id: userId },
-      })
+      const sessions = await client.$queryRaw`
+        SELECT id, user_id, subject, topic, title, last_message, message_count, messages, created_at, updated_at
+        FROM chat_sessions 
+        WHERE id = ${sessionId} AND user_id = ${userId}
+        LIMIT 1
+      `
+      const session = Array.isArray(sessions) ? sessions[0] : null
 
       if (!session) {
         console.log('Chat sessions GET - Session not found')
@@ -46,16 +50,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(session)
     }
 
-    // Fetch all sessions
+    // Fetch all sessions using raw SQL to avoid prepared statement conflicts
     console.log('Chat sessions GET - Fetching all sessions')
-    const sessions = await client.chatSession.findMany({
-      where: { user_id: userId },
-      orderBy: { updated_at: 'desc' },
-      take: 50, // Limit to 50 most recent sessions
-    })
+    const sessions = await client.$queryRaw`
+      SELECT id, user_id, subject, topic, title, last_message, message_count, messages, created_at, updated_at
+      FROM chat_sessions 
+      WHERE user_id = ${userId}
+      ORDER BY updated_at DESC
+      LIMIT 50
+    `
 
-    console.log('Chat sessions GET - Found', sessions.length, 'sessions')
-    return NextResponse.json(sessions)
+    console.log('Chat sessions GET - Found', Array.isArray(sessions) ? sessions.length : 0, 'sessions')
+    return NextResponse.json(sessions || [])
   } catch (error) {
     console.error('Chat sessions GET - Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
