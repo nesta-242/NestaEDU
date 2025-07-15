@@ -459,7 +459,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-6 space-y-6 px-4 md:px-6">
       <Card>
         <CardContent className="p-8 text-center">
           <h1 className="text-3xl font-bold">Profile Settings</h1>
@@ -477,7 +477,7 @@ export default function ProfilePage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-3 max-w-4xl mx-auto">
           {/* Profile Overview */}
           <Card className="md:col-span-1">
             <CardHeader>

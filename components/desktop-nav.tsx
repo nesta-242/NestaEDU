@@ -106,9 +106,12 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
           <div className="flex items-center justify-between">
             <ExamSafeLink href="/student/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <PenTool className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-bold">Nesta Education <span className="text-amber-500">(Beta)</span></h2>
+              <div className="flex flex-col">
+                <h2 className="text-xl font-bold whitespace-nowrap">Nesta Education</h2>
+                <span className="text-amber-500 text-xl font-bold">(Beta)</span>
+              </div>
             </ExamSafeLink>
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8" title="Collapse sidebar">
+            <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8 mt-2" title="Collapse sidebar">
               <Menu className="h-4 w-4" />
             </Button>
           </div>

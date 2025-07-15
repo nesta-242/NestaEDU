@@ -533,6 +533,41 @@ export default function DashboardPage() {
     console.log('Avatar length:', userProfile?.avatar?.length)
   }, [userProfile])
 
+  useEffect(() => {
+    // Mobile viewport fix - ensure proper zoom on mobile
+    const fixMobileViewport = () => {
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        // Force proper viewport on mobile
+        const viewport = document.querySelector('meta[name="viewport"]')
+        if (viewport) {
+          viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover')
+        }
+        
+        // Prevent zoom on input focus
+        const inputs = document.querySelectorAll('input, textarea, select')
+        inputs.forEach(input => {
+          input.addEventListener('focus', () => {
+            if (window.innerWidth <= 768) {
+              setTimeout(() => {
+                window.scrollTo(0, 0)
+              }, 100)
+            }
+          })
+        })
+      }
+    }
+
+    // Run viewport fix on mount
+    fixMobileViewport()
+
+    // Also run on window resize
+    window.addEventListener('resize', fixMobileViewport)
+    
+    return () => {
+      window.removeEventListener('resize', fixMobileViewport)
+    }
+  }, [])
+
   const getUserInitials = () => {
     if (userProfile?.firstName && userProfile?.lastName) {
       return `${userProfile.firstName[0]}${userProfile.lastName[0]}`.toUpperCase()
@@ -606,7 +641,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Loading Header */}
+        {/* Loading Header with Text */}
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -624,6 +659,17 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Loading Message */}
+        <div className="text-center py-4">
+          <div className="inline-flex items-center gap-2 text-muted-foreground">
+            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium">Loading your learning dashboard...</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Fetching your progress, recent activity, and performance data
+          </p>
+        </div>
 
         {/* Loading Metrics */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -690,7 +736,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dashboard-page dashboard-container dashboard-scroll">
       {/* Welcome Header with Quick Actions */}
       <Card>
         <CardContent className="p-6">

@@ -54,16 +54,27 @@ export function MobileBottomNav() {
                 href={item.href}
                 className="flex flex-col items-center justify-center py-2 px-3 min-w-0 flex-1"
               >
-                <div
-                  className={cn(
-                    "flex flex-col items-center justify-center w-full h-12 rounded-lg transition-colors",
-                    item.current
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <Icon className="h-5 w-5 mb-1" />
-                  <span className="text-xs font-medium truncate">{item.name}</span>
+                <div className="flex flex-col items-center justify-center w-full">
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg transition-colors mb-1",
+                      item.current
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span 
+                    className={cn(
+                      "text-xs truncate",
+                      item.current 
+                        ? "font-semibold text-primary" 
+                        : "font-medium text-muted-foreground"
+                    )}
+                  >
+                    {item.name}
+                  </span>
                 </div>
               </ExamSafeLink>
             )

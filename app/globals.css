@@ -433,11 +433,36 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   body {
-    background-size: 15px 15px;
+    background-size: 20px 20px, 20px 20px, 20px 20px;
   }
 
   .sketch-shadow {
     box-shadow: 2px 2px 0px hsl(var(--sketch-shadow)), 4px 4px 0px hsl(var(--sketch-shadow));
+  }
+
+  /* Mobile zoom fix for dashboard */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Ensure proper viewport on mobile dashboard */
+  .dashboard-page {
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Prevent horizontal scrolling on mobile */
+  .dashboard-container {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Ensure proper touch scrolling */
+  .dashboard-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 

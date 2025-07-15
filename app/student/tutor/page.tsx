@@ -514,7 +514,7 @@ export default function AITutorPage() {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto">
+    <div className="flex flex-col min-h-0 max-w-4xl mx-auto">
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -546,9 +546,9 @@ export default function AITutorPage() {
         </CardHeader>
       </Card>
 
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardContent className="flex-1 p-0">
-          <ScrollArea ref={scrollAreaRef} className="h-full p-4">
+          <ScrollArea ref={scrollAreaRef} className="h-[60vh] md:h-full p-4">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-8">
@@ -602,7 +602,7 @@ export default function AITutorPage() {
 
         <Separator />
 
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 pb-6 md:pb-4">
           {uploadedImage && (
             <div className="relative inline-block">
               <img src={uploadedImage || "/placeholder.svg"} alt="Uploaded" className="max-w-xs rounded-lg border" />
