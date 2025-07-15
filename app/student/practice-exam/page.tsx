@@ -73,6 +73,20 @@ export default function PracticeExamPage() {
   useEffect(() => {
     const loadExamResults = async () => {
       try {
+        // Check cache first
+        const cachedData = sessionStorage.getItem('examResultsCache')
+        const cacheTimestamp = sessionStorage.getItem('examResultsCacheTimestamp')
+        const now = Date.now()
+        const cacheAge = cacheTimestamp ? now - parseInt(cacheTimestamp) : Infinity
+        
+        // Use cache if it's less than 5 minutes old
+        if (cachedData && cacheAge < 5 * 60 * 1000) {
+          console.log('Using cached exam results')
+          const cachedResults = JSON.parse(cachedData)
+          setExamResults(cachedResults)
+        }
+        
+        // Always fetch fresh data in background
         const response = await fetch('/api/exam-results')
         if (response.ok) {
           const results = await response.json()
@@ -87,18 +101,39 @@ export default function PracticeExamPage() {
             date: result.created_at, // Map from snake_case
             feedback: result.feedback,
           }))
+          
+          // Update cache
+          sessionStorage.setItem('examResultsCache', JSON.stringify(examResults))
+          sessionStorage.setItem('examResultsCacheTimestamp', now.toString())
+          
           setExamResults(examResults)
         } else {
           console.error('Failed to fetch exam results:', response.status)
-          setExamResults([])
+          if (!cachedData) {
+            setExamResults([])
+          }
         }
       } catch (error) {
         console.error('Error loading exam results:', error)
-        setExamResults([])
+        if (!sessionStorage.getItem('examResultsCache')) {
+          setExamResults([])
+        }
       }
     }
     
     loadExamResults()
+    
+    // Listen for exam updates
+    const handleExamUpdate = () => {
+      console.log('Exam update event received, refreshing exam results...')
+      loadExamResults()
+    }
+    
+    window.addEventListener("examCompleted", handleExamUpdate)
+    
+    return () => {
+      window.removeEventListener("examCompleted", handleExamUpdate)
+    }
   }, [])
 
   const loadDetailedExam = async (examId: string) => {

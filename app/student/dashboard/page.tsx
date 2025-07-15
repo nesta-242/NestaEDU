@@ -164,13 +164,19 @@ export default function DashboardPage() {
     }
 
     const fetchUser = async () => {
-      const res = await fetch('/api/auth/me')
-      if (res.status === 401) {
-        router.push('/login')
-        return
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.status === 401) {
+          router.push('/login')
+          return
+        }
+        const data = await res.json()
+        console.log('Fetched user profile:', data.user)
+        setUserProfile(data.user)
+        localStorage.setItem('userProfile', JSON.stringify(data.user))
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
       }
-      const data = await res.json()
-      setUserProfile(data.user)
     }
 
     // Load profile from localStorage first
@@ -179,10 +185,22 @@ export default function DashboardPage() {
     // Listen for profile updates
     const handleProfileUpdate = (e: Event) => {
       const customEvent = e as CustomEvent
+      console.log('Profile update event received:', customEvent.detail)
       setUserProfile(customEvent.detail)
+      // Also update localStorage to ensure consistency
+      localStorage.setItem('userProfile', JSON.stringify(customEvent.detail))
     }
 
     window.addEventListener("profileUpdated", handleProfileUpdate)
+
+    // Add visibility change listener to refresh profile when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, refreshing user profile...')
+        fetchUser()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     const fetchDashboardData = async () => {
       try {
@@ -437,6 +455,7 @@ export default function DashboardPage() {
     return () => {
       window.removeEventListener("chatSessionUpdated", handleChatSessionUpdate)
       window.removeEventListener("profileUpdated", handleProfileUpdate)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [router])
 

@@ -199,6 +199,10 @@ export default function SubjectsPage() {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }
 
+  const getSessionCountBySubject = (subject: string) => {
+    return chatHistory.filter((session) => session.subject === subject).length
+  }
+
   const formatTimeAgo = (date: Date) => {
     const now = new Date()
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
@@ -521,7 +525,7 @@ export default function SubjectsPage() {
             className="flex items-center gap-2 px-6 py-3"
             disabled={isLoading}
           >
-            📐 {capitalizeSubject("Mathematics")}
+            📐 {capitalizeSubject("Mathematics")} ({getSessionCountBySubject("math")})
           </Button>
           <Button
             variant={activeTab === "science" ? "default" : "outline"}
@@ -529,7 +533,7 @@ export default function SubjectsPage() {
             className="flex items-center gap-2 px-6 py-3"
             disabled={isLoading}
           >
-            🔬 Science
+            🔬 Science ({getSessionCountBySubject("science")})
           </Button>
           <Button
             variant={activeTab === "general" ? "default" : "outline"}
@@ -537,7 +541,7 @@ export default function SubjectsPage() {
             className="flex items-center gap-2 px-6 py-3"
             disabled={isLoading}
           >
-            📚 General
+            📚 General ({getSessionCountBySubject("general")})
           </Button>
         </div>
         

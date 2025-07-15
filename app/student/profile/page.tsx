@@ -471,6 +471,7 @@ export default function ProfilePage() {
       }
 
       // Dispatch event to notify other components
+      console.log('Dispatching profile update event with data:', updatedProfile)
       window.dispatchEvent(
         new CustomEvent('profileUpdated', {
           detail: updatedProfile,

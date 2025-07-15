@@ -424,6 +424,8 @@ export default function ExamPage() {
         console.log("Saved exam result to database")
         // Dispatch event to update dashboard and other listeners
         window.dispatchEvent(new Event("chatSessionUpdated"))
+        // Dispatch event to update exam results count
+        window.dispatchEvent(new Event("examCompleted"))
       } else {
         console.error("Failed to save exam result to database")
       }

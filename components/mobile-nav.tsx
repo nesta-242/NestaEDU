@@ -35,6 +35,34 @@ const preloadChatSessions = () => {
   }
 }
 
+// Preload function for exam results
+const preloadExamResults = () => {
+  // Only preload if we don't have recent cache
+  const cacheTimestamp = sessionStorage.getItem('examResultsCacheTimestamp')
+  if (!cacheTimestamp || Date.now() - parseInt(cacheTimestamp) > 5 * 60 * 1000) {
+    fetch('/api/exam-results')
+      .then(response => response.json())
+      .then(results => {
+        const examResults = results.map((result: any) => ({
+          id: result.id,
+          subject: result.subject,
+          score: result.score,
+          maxScore: result.max_score,
+          percentage: result.percentage,
+          totalQuestions: result.total_questions,
+          timeSpent: result.time_spent || 0,
+          date: result.created_at,
+          feedback: result.feedback,
+        }))
+        sessionStorage.setItem('examResultsCache', JSON.stringify(examResults))
+        sessionStorage.setItem('examResultsCacheTimestamp', Date.now().toString())
+      })
+      .catch(error => {
+        console.error('Exam results preload failed:', error)
+      })
+  }
+}
+
 export function MobileNav() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -106,6 +134,10 @@ export function MobileNav() {
                         // Preload chat sessions when hovering over Past Sessions
                         if (item.href === "/student/subjects") {
                           preloadChatSessions()
+                        }
+                        // Preload exam results when hovering over Practice Exams
+                        if (item.href === "/student/practice-exam") {
+                          preloadExamResults()
                         }
                       }}
                     >
