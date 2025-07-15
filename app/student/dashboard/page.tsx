@@ -556,12 +556,15 @@ export default function DashboardPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-12 w-12" key={userProfile?.avatar || 'no-avatar'}>
+              <Avatar className="h-12 w-12" key={userProfile?.avatar ? `avatar-${Date.now()}` : 'no-avatar'}>
                 <AvatarImage 
-                  src={userProfile?.avatar ? `${userProfile.avatar}?t=${Date.now()}` : ""} 
+                  src={userProfile?.avatar && userProfile.avatar.startsWith('data:image/') ? userProfile.avatar : ""} 
                   onError={(e) => {
-                    console.log('Avatar image failed to load:', userProfile?.avatar)
+                    console.log('Avatar image failed to load, falling back to initials')
                     e.currentTarget.style.display = 'none'
+                  }}
+                  onLoad={() => {
+                    console.log('Avatar image loaded successfully')
                   }}
                 />
                 <AvatarFallback>{getUserInitials()}</AvatarFallback>

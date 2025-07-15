@@ -426,6 +426,11 @@ export default function ProfilePage() {
         fullImage: fullImagePreview || "", // Include the full image
       }
 
+      // Validate avatar URL before saving
+      if (avatarPreview && avatarPreview.length > 1000000) {
+        console.warn('Avatar data is very large, may cause issues:', avatarPreview.length, 'characters')
+      }
+
       // Save to backend
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
@@ -443,8 +448,12 @@ export default function ProfilePage() {
       const updatedProfile = await res.json()
 
       // Ensure avatar and full image are preserved or cleared
-      if (avatarPreview) {
+      if (avatarPreview && avatarPreview.startsWith('data:image/')) {
         updatedProfile.avatar = avatarPreview
+        console.log('Avatar data is valid, length:', avatarPreview.length)
+      } else if (avatarPreview) {
+        console.warn('Avatar data is not a valid data URL:', avatarPreview.substring(0, 50) + '...')
+        updatedProfile.avatar = "" // Clear invalid avatar
       } else {
         updatedProfile.avatar = "" // Ensure it's cleared
       }
