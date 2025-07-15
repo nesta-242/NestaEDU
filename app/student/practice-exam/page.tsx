@@ -289,6 +289,44 @@ export default function PracticeExamPage() {
 
   const renderNewExamTab = () => (
     <div className="space-y-8">
+      {/* How It Works Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">How Practice Exams Work</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-6 text-center">
+            <div className="space-y-2">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Target className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="font-semibold">1. Choose Your Subject</h3>
+              <p className="text-sm text-muted-foreground">
+                Select from BJC (Middle School) or BGCSE (High School) level exams across multiple subjects
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="font-semibold">2. Take the Exam</h3>
+              <p className="text-sm text-muted-foreground">
+                Answer AI-generated questions tailored to the official curriculum standards
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                <TrendingUp className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="font-semibold">3. Get Results</h3>
+              <p className="text-sm text-muted-foreground">
+                Receive detailed feedback and explanations to help you improve
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Exam Options */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {examTypes.map((exam) => {
@@ -353,44 +391,6 @@ export default function PracticeExamPage() {
           )
         })}
       </div>
-
-      {/* How It Works Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-center">How Practice Exams Work</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-6 text-center">
-            <div className="space-y-2">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <Target className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="font-semibold">1. Choose Your Subject</h3>
-              <p className="text-sm text-muted-foreground">
-                Select from BJC (Middle School) or BGCSE (High School) level exams across multiple subjects
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <FileText className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold">2. Take the Exam</h3>
-              <p className="text-sm text-muted-foreground">
-                Answer AI-generated questions tailored to the official curriculum standards
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold">3. Get Results</h3>
-              <p className="text-sm text-muted-foreground">
-                Receive detailed feedback and explanations to help you improve
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 

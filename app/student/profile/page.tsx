@@ -75,6 +75,20 @@ export default function ProfilePage() {
 
   // Load profile data on component mount
   useEffect(() => {
+    // Clear any cached avatar data from localStorage to start fresh
+    const cachedProfile = localStorage.getItem('userProfile')
+    if (cachedProfile) {
+      try {
+        const parsed = JSON.parse(cachedProfile)
+        // Clear avatar data from cached profile
+        parsed.avatar = ""
+        parsed.fullImage = ""
+        localStorage.setItem('userProfile', JSON.stringify(parsed))
+      } catch (error) {
+        console.error('Error clearing cached avatar:', error)
+      }
+        }
+    
     const fetchProfile = async () => {
       setIsLoading(true) // Ensure loading state is set
       try {
@@ -98,12 +112,11 @@ export default function ProfilePage() {
           setProfile(sanitizedUser)
           setOriginalProfile(sanitizedUser)
           localStorage.setItem('userProfile', JSON.stringify(sanitizedUser))
+          // Clear any existing avatar preview to start fresh
+          setAvatarPreview("")
+          setFullImagePreview("")
           if (sanitizedUser.avatar) {
-            setAvatarPreview(sanitizedUser.avatar)
             setOriginalAvatar(sanitizedUser.avatar)
-          }
-          if (sanitizedUser.fullImage) {
-            setFullImagePreview(sanitizedUser.fullImage)
           }
         } else {
           // Only fallback to localStorage if API actually fails
@@ -333,6 +346,15 @@ export default function ProfilePage() {
         return
       }
 
+      // Clear any existing avatar data immediately
+      setAvatarPreview("")
+      setFullImagePreview("")
+      setProfile(prev => ({
+        ...prev,
+        avatar: "",
+        fullImage: ""
+      }))
+      
       setAvatarFile(file)
 
       try {
@@ -358,6 +380,12 @@ export default function ProfilePage() {
 
   const handleCropComplete = (croppedImage: string) => {
     setAvatarPreview(croppedImage)
+    // Clear the old avatar from profile state immediately
+    setProfile(prev => ({
+      ...prev,
+      avatar: "",
+      fullImage: ""
+    }))
     setShowCropper(false)
     setTempImageSrc("")
     
@@ -576,7 +604,7 @@ export default function ProfilePage() {
                           }
                         }}
                       >
-                        <AvatarImage src={avatarPreview || profile.avatar} />
+                        <AvatarImage src={avatarPreview || ""} />
                         <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </TooltipTrigger>
