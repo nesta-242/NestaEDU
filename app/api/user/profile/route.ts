@@ -53,6 +53,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    console.log('GET /api/user/profile - Raw profile from database:', profile)
+    console.log('GET /api/user/profile - Avatar from database:', profile.avatar)
+    console.log('GET /api/user/profile - Avatar type:', typeof profile.avatar)
+    console.log('GET /api/user/profile - Avatar length:', profile.avatar?.length)
+
     return NextResponse.json({
       id: profile.id,
       email: profile.email,
@@ -84,6 +89,11 @@ export async function PUT(request: NextRequest) {
 
     const { firstName, lastName, phone, gradeLevel, school, avatar, fullImage } = await request.json()
 
+    console.log('PUT /api/user/profile - Received avatar data:', avatar ? 'exists' : 'null')
+    console.log('PUT /api/user/profile - Avatar type:', typeof avatar)
+    console.log('PUT /api/user/profile - Avatar length:', avatar?.length)
+    console.log('PUT /api/user/profile - Avatar starts with data:image/:', avatar?.startsWith('data:image/'))
+
     const supabase = createSupabaseClient()
     const { data: updatedProfile, error } = await supabase
       .from('users')
@@ -108,6 +118,10 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    console.log('PUT /api/user/profile - Updated profile from database:', updatedProfile)
+    console.log('PUT /api/user/profile - Avatar after update:', updatedProfile.avatar)
+    console.log('PUT /api/user/profile - Avatar type after update:', typeof updatedProfile.avatar)
 
     return NextResponse.json({
       id: updatedProfile.id,
