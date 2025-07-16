@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Home, MessageSquare, LogOut, Menu, PenTool, FileText } from "lucide-react"
+import { BookOpen, Home, MessageSquare, LogOut, ChevronLeft, ChevronRight, PenTool, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ExamSafeLink } from "@/components/exam-safe-link"
 
@@ -97,7 +97,7 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
   return (
     <div
       className={cn(
-        "hidden md:flex h-screen flex-col border-r bg-background transition-all duration-300",
+        "hidden md:flex h-screen flex-col border-r bg-background transition-all duration-300 relative",
         isCollapsed ? "w-16" : "w-64",
       )}
     >
@@ -111,18 +111,12 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
                 <span className="text-amber-500 text-xl font-bold">(Beta)</span>
               </div>
             </ExamSafeLink>
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8 mt-2" title="Collapse sidebar">
-              <Menu className="h-4 w-4" />
-            </Button>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
             <ExamSafeLink href="/student/dashboard" className="block hover:opacity-80 transition-opacity">
               <PenTool className="w-8 h-8 text-primary" />
             </ExamSafeLink>
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-8 w-8" title="Expand sidebar">
-              <Menu className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>
@@ -166,6 +160,23 @@ export function DesktopNav({ isCollapsed, onToggle }: DesktopNavProps) {
           })}
         </ul>
       </nav>
+
+      {/* Chevron Toggle Button - Positioned in middle */}
+      <div className="absolute right-0 top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onToggle} 
+          className="h-8 w-8 bg-background border border-border shadow-sm hover:bg-accent" 
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
 
       <div className="p-4 border-t">
         <Button

@@ -82,8 +82,7 @@ export default function LoginPage() {
               <span className="text-2xl font-bold">Nesta Education <span className="text-amber-500">(Beta)</span></span>
             </Link>
           </div>
-          <CardTitle className="text-2xl">Sign In</CardTitle>
-          <CardDescription>Welcome back! Please sign in below.</CardDescription>
+          <CardDescription className="font-code text-sm text-foreground">Welcome back! Please sign in below.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
