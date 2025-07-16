@@ -213,7 +213,7 @@ export default function SignUpPage() {
             </Link>
           </div>
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <CardDescription>Join thousands of students learning with AI-powered tutoring</CardDescription>
+          <CardDescription>Be the first of many students to learn with AI-powered tutoring.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

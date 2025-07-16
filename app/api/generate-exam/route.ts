@@ -211,6 +211,7 @@ MATHEMATICS-SPECIFIC REQUIREMENTS:
 - Cover practical mathematics applications
 - Include word problems and real-world scenarios
 - Test mathematical reasoning and problem-solving
+- Questions may be recycled between exams but numbers should be different enough to be engaging.
 
 QUESTION STYLE GUIDELINES:
 - Multiple choice should test fundamental mathematical concepts
@@ -372,6 +373,7 @@ MATHEMATICS-SPECIFIC REQUIREMENTS:
 - Cover statistics and probability
 - Include geometric proofs and constructions
 - Test mathematical reasoning and problem-solving
+- Questions may be recycled between exams but numbers should be different enough to be engaging. 
 
 QUESTION STYLE GUIDELINES:
 - Multiple choice should test mathematical concepts and calculations
@@ -414,6 +416,7 @@ QUESTION QUALITY STANDARDS:
 - Include a mix of difficulty levels (easy, medium, challenging)
 - Ensure questions test understanding, not just memorization
 - Use proper scientific/mathematical terminology and notation
+- Questions may be recycled but should be different enough to be engaging 
 
 RESPONSE FORMAT - Return ONLY valid JSON in this exact structure:
 {
