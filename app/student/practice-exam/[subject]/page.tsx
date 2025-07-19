@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useExamContext } from "@/contexts/exam-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -83,6 +83,66 @@ export default function ExamPage() {
   const [firstName, setFirstName] = useState<string>("Student")
   // Add state to track time expiration submission
   const [isTimeExpired, setIsTimeExpired] = useState(false)
+  // Add ref to store the progress toast for time expiration
+  const timeExpiredToastRef = useRef<any>(null)
+  // Add state for grading progress
+  const [gradingProgress, setGradingProgress] = useState(0)
+  const [isGrading, setIsGrading] = useState(false)
+  
+  // Add flag to prevent state restoration conflicts
+  const [hasInitialized, setHasInitialized] = useState(false)
+
+  // Persist exam state to prevent timer resets on re-renders
+  useEffect(() => {
+    if (hasInitialized) return // Don't restore if already initialized
+    
+    const savedState = localStorage.getItem(`exam-state-${subject}`)
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState)
+        if (state.examStarted && !state.showResults && state.timeRemaining > 0) {
+          console.log("Restoring exam state from localStorage:", state)
+          setExamStarted(state.examStarted)
+          setTimeRemaining(state.timeRemaining)
+          setCurrentQuestion(state.currentQuestion || 0)
+          setAnswers(state.answers || {})
+          setIsTimeExpired(state.isTimeExpired || false)
+        }
+      } catch (error) {
+        console.error("Error parsing saved exam state:", error)
+        localStorage.removeItem(`exam-state-${subject}`)
+      }
+    }
+    setHasInitialized(true)
+  }, [subject, hasInitialized]) // Add hasInitialized to dependencies
+
+  // Save exam state to localStorage
+  useEffect(() => {
+    if (examStarted) {
+      const stateToSave = {
+        examStarted,
+        timeRemaining,
+        currentQuestion,
+        answers,
+        isTimeExpired,
+        showResults
+      }
+      localStorage.setItem(`exam-state-${subject}`, JSON.stringify(stateToSave))
+    } else {
+      localStorage.removeItem(`exam-state-${subject}`)
+    }
+  }, [examStarted, timeRemaining, currentQuestion, answers, isTimeExpired, showResults, subject])
+
+  // Debug logging for timer state changes
+  useEffect(() => {
+    console.log("Timer state changed:", {
+      examStarted,
+      timeRemaining,
+      showResults,
+      isTimeExpired,
+      subject
+    })
+  }, [examStarted, timeRemaining, showResults, isTimeExpired, subject])
 
   // Load user first name from API or localStorage
   useEffect(() => {
@@ -120,17 +180,22 @@ export default function ExamPage() {
     // Only start timer if exam is started, timeRemaining is not null, greater than 0, and not showing results
     if (examStarted && timeRemaining !== null && timeRemaining > 0 && !showResults && !isTimeExpired) {
       console.log("Starting timer countdown from:", timeRemaining)
-      timer = setTimeout(() => setTimeRemaining(timeRemaining - 1), 1000)
+      timer = setTimeout(() => {
+        // Prevent setting to null or negative values
+        const newTime = Math.max(0, timeRemaining - 1)
+        console.log("Timer tick - setting timeRemaining to:", newTime)
+        setTimeRemaining(newTime)
+      }, 1000)
     } 
     // Only trigger expiration if exam is started, timeRemaining is exactly 0, not showing results, and not already expired
     else if (examStarted && timeRemaining === 0 && !showResults && !isTimeExpired) {
       console.log("Timer expired! Setting isTimeExpired to true")
       setIsTimeExpired(true)
-      toast({
-        title: "Time's up!",
-        description: "Your exam is now being submitted for grading.",
-        duration: 3000,
-      })
+      
+      // Start grading progress immediately
+      setIsGrading(true)
+      setGradingProgress(0)
+      
       // Small delay to ensure toast appears before submission
       setTimeout(() => {
         console.log("Calling handleSubmitExam with timeExpired=true")
@@ -138,7 +203,12 @@ export default function ExamPage() {
       }, 100)
     }
     
-    return () => clearTimeout(timer)
+    return () => {
+      if (timer) {
+        console.log("Clearing timer")
+        clearTimeout(timer)
+      }
+    }
   }, [timeRemaining, examStarted, showResults, isTimeExpired])
 
   // Handle browser navigation warning
@@ -155,14 +225,18 @@ export default function ExamPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [examStarted, showResults])
 
-  // Reset exam state when component unmounts or user navigates away
+  // Reset exam state only when component unmounts (not on re-renders)
   useEffect(() => {
     return () => {
-      // Reset exam state when leaving the exam page
+      // Only reset exam state when actually leaving the exam page
+      // This prevents resetting during re-renders
+      console.log("Component unmounting - resetting exam state")
       setExamStarted(false)
       setShowResults(false)
+      // Clear localStorage when component unmounts
+      localStorage.removeItem(`exam-state-${subject}`)
     }
-  }, [setExamStarted, setShowResults])
+  }, []) // Empty dependency array - only run on actual unmount
 
 
 
@@ -173,7 +247,7 @@ export default function ExamPage() {
           title: "BJC Mathematics",
           level: "BJC",
           subject: "Mathematics",
-          timeLimit: 30,
+          timeLimit: 15,
           description: "Middle School level mathematics covering basic algebra, geometry, and arithmetic",
         }
       case "bjc-general-science":
@@ -181,7 +255,7 @@ export default function ExamPage() {
           title: "BJC General Science",
           level: "BJC",
           subject: "General Science",
-          timeLimit: 30,
+          timeLimit: 15,
           description: "Middle School level general science covering biology, chemistry, physics, and earth science",
         }
       case "bjc-health-science":
@@ -189,7 +263,7 @@ export default function ExamPage() {
           title: "BJC Health Science",
           level: "BJC",
           subject: "Health Science",
-          timeLimit: 30,
+          timeLimit: 15,
           description: "Middle School level health science covering anatomy, nutrition, and health education",
         }
       case "bgcse-math":
@@ -197,7 +271,7 @@ export default function ExamPage() {
           title: "BGCSE Mathematics",
           level: "BGCSE",
           subject: "Mathematics",
-          timeLimit: 45,
+          timeLimit: 25,
           description: "High School level mathematics including calculus, trigonometry, and advanced algebra",
         }
       case "bgcse-chemistry":
@@ -205,7 +279,7 @@ export default function ExamPage() {
           title: "BGCSE Chemistry",
           level: "BGCSE",
           subject: "Chemistry",
-          timeLimit: 45,
+          timeLimit: 25,
           description: "High School level chemistry covering organic chemistry, chemical bonding, and thermodynamics",
         }
       case "bgcse-physics":
@@ -213,7 +287,7 @@ export default function ExamPage() {
           title: "BGCSE Physics",
           level: "BGCSE",
           subject: "Physics",
-          timeLimit: 45,
+          timeLimit: 25,
           description: "High School level physics covering mechanics, electricity, magnetism, and modern physics",
         }
       case "bgcse-biology":
@@ -221,7 +295,7 @@ export default function ExamPage() {
           title: "BGCSE Biology",
           level: "BGCSE",
           subject: "Biology",
-          timeLimit: 45,
+          timeLimit: 25,
           description: "High School level biology covering cell biology, genetics, ecology, and human physiology",
         }
       case "bgcse-combined-science":
@@ -229,7 +303,7 @@ export default function ExamPage() {
           title: "BGCSE Combined Science",
           level: "BGCSE",
           subject: "Combined Science",
-          timeLimit: 45,
+          timeLimit: 25,
           description: "Integrated science covering biology, chemistry, and physics concepts",
         }
       default:
@@ -252,20 +326,26 @@ export default function ExamPage() {
     setShowResults(false)
     setExamStarted(false)
     setIsTimeExpired(false)
+    setHasInitialized(false) // Reset initialization flag for new exam
+    
+    // Clear any existing exam state from localStorage
+    localStorage.removeItem(`exam-state-${subject}`)
 
     const startTime = Date.now()
-    const estimatedDuration = 8000 // Estimate 8 seconds for exam generation
+    const estimatedDuration = 6000 // Reduced to 6 seconds for more realistic timing
 
     // Start with initial progress
-    setLoadingProgress(5)
+    setLoadingProgress(10)
+
+    let progressInterval: NodeJS.Timeout | null = null
 
     try {
       // Create a progress interval that estimates real progress based on time elapsed
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         const elapsed = Date.now() - startTime
-        const estimatedProgress = Math.min((elapsed / estimatedDuration) * 85, 85) // Go up to 85%
-        setLoadingProgress(Math.max(5, estimatedProgress))
-      }, 200)
+        const estimatedProgress = Math.min((elapsed / estimatedDuration) * 80, 80) // Go up to 80%
+        setLoadingProgress(Math.max(10, estimatedProgress))
+      }, 150) // Faster updates for smoother progress
 
       const response = await fetch("/api/generate-exam", {
         method: "POST",
@@ -278,7 +358,10 @@ export default function ExamPage() {
       })
 
       // Clear the progress interval since we're done
-      clearInterval(progressInterval)
+      if (progressInterval) {
+        clearInterval(progressInterval)
+        progressInterval = null
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -290,11 +373,13 @@ export default function ExamPage() {
         throw new Error(data.error)
       }
 
-      // Show completion progress
+      // Smooth transition to completion
+      setLoadingProgress(90)
+      await new Promise(resolve => setTimeout(resolve, 100))
       setLoadingProgress(100)
       
-      // Small delay to show 100% completion
-      await new Promise(resolve => setTimeout(resolve, 300))
+      // Brief delay to show 100% completion
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       setExamData(data)
       const examInfo = getExamInfo()
@@ -317,14 +402,20 @@ export default function ExamPage() {
       }
     } catch (error) {
       console.error("Error generating exam:", error)
+      // Clear any existing progress interval
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
       toast({
         title: "Error",
         description: "Failed to generate exam. Please try again.",
         variant: "destructive",
       })
     } finally {
+      // Ensure loading state is properly reset
       setIsLoading(false)
-      setLoadingProgress(0)
+      // Don't reset progress to 0 immediately to avoid glitch
+      setTimeout(() => setLoadingProgress(0), 100)
     }
   }
 
@@ -374,7 +465,7 @@ export default function ExamPage() {
     }
   }
 
-  const handleSubmitExam = async (isTimeExpired = false) => {
+  const handleSubmitExam = useCallback(async (isTimeExpired = false) => {
     if (!examData) return
 
     const unansweredQuestions = examData.questions.filter((q) => !answers[q.id] || answers[q.id].trim() === "")
@@ -390,6 +481,23 @@ export default function ExamPage() {
 
     setIsSubmitting(true)
 
+    // Start grading progress if not already started
+    if (!isGrading) {
+      setIsGrading(true)
+      setGradingProgress(0)
+    }
+    
+    const totalQuestions = examData.questions.length
+    let currentProgress = 0
+
+    // Simulate progress updates during grading
+    const progressInterval = setInterval(() => {
+      currentProgress += Math.random() * 15 + 5 // Increment by 5-20%
+      if (currentProgress < 90) {
+        setGradingProgress(currentProgress)
+      }
+    }, 800)
+
     try {
       const response = await fetch("/api/grade-exam", {
         method: "POST",
@@ -402,6 +510,9 @@ export default function ExamPage() {
         }),
       })
 
+      // Clear the progress interval
+      clearInterval(progressInterval)
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -412,23 +523,15 @@ export default function ExamPage() {
         throw new Error(results.error)
       }
 
+      // Complete grading progress
+      setGradingProgress(100)
+      setIsGrading(false)
+
       setExamResults(results)
       setShowResults(true)
-
-      if (results.isMock) {
-        toast({
-          title: "Mock Grading Complete",
-          description: results.mockMessage || "Using automated grading - OpenAI unavailable",
-          variant: "destructive",
-          duration: 5000,
-        })
-      } else {
-        toast({
-          title: "Exam Graded",
-          description: `Score: ${results.totalScore}/${results.maxScore} (${results.percentage}%)`,
-          duration: 5000,
-        })
-      }
+      
+      // Clear localStorage when exam is completed
+      localStorage.removeItem(`exam-state-${subject}`)
 
       // Save results to database
       const examResult = {
@@ -465,24 +568,36 @@ export default function ExamPage() {
       }
     } catch (error) {
       console.error("Error grading exam:", error)
+      
+      // Clear the progress interval if it exists
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
+      
+      // Show error toast and stop grading
       toast({
-        title: "Error",
+        title: "Grading Failed",
         description: "Failed to grade exam. Please try again.",
         variant: "destructive",
+        duration: 5000,
       })
+      
+      // Stop grading progress
+      setIsGrading(false)
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [examData, answers, subject, timeRemaining, toast, setIsGrading, setGradingProgress, setExamResults, setShowResults])
 
   const startExam = () => {
     console.log("Starting exam - setting examStarted to true")
     setExamStarted(true)
+    setHasInitialized(true) // Mark as initialized to prevent state restoration conflicts
     const examInfo = getExamInfo()
-    // For testing: set to 10 seconds instead of full time
-    const testTime = 10 // Convert minutes to seconds
-    console.log("Setting timeRemaining to:", testTime)
-    setTimeRemaining(testTime)
+    // Set proper exam duration in seconds
+    const examTimeInSeconds = examInfo.timeLimit * 60
+    console.log("Setting timeRemaining to:", examTimeInSeconds, "seconds (", examInfo.timeLimit, "minutes)")
+    setTimeRemaining(examTimeInSeconds)
     toast({
       title: "Exam Started",
       description: `You have ${examInfo.timeLimit} minutes to complete the exam. Good luck!`,
@@ -1012,11 +1127,50 @@ export default function ExamPage() {
       {currentQ && (
         <div className="exam-content">
         <>
-          {isTimeExpired && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-2 text-red-700">
-                <AlertCircle className="h-5 w-5" />
-                <span className="font-semibold">Time's Up! Your exam is now being submitted for grading.</span>
+
+          
+          {/* Grading Progress Bar */}
+          {isGrading && (
+            <div className="bg-red-50/50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/50 rounded-lg p-4 mb-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="font-semibold">Time's Up! Submitting & Grading Your Exam...</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                    <span>Progress</span>
+                    <span>{Math.round(gradingProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
+                                      <div 
+                    className="h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden"
+                    style={{ 
+                      width: `${gradingProgress}%`,
+                      background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%)',
+                      boxShadow: '0 0 6px rgba(59, 130, 246, 0.2)'
+                    }}
+                  >
+                    {/* Animated shimmer effect */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                        transform: 'translateX(-100%)',
+                        animation: 'shimmer 1.5s infinite'
+                      }}
+                    ></div>
+                  </div>
+                  </div>
+                  <div className="text-xs text-red-500 dark:text-red-400">
+                    {gradingProgress < 20 && "Analyzing your answers..."}
+                    {gradingProgress >= 20 && gradingProgress < 40 && "Processing questions..."}
+                    {gradingProgress >= 40 && gradingProgress < 60 && "Evaluating responses..."}
+                    {gradingProgress >= 60 && gradingProgress < 80 && "Calculating scores..."}
+                    {gradingProgress >= 80 && gradingProgress < 100 && "Finalizing results..."}
+                    {gradingProgress >= 100 && "Grading complete!"}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1170,16 +1324,7 @@ export default function ExamPage() {
             )}
           </Button>
 
-          {/* Test button for timer expiration - hidden on mobile to save space */}
-          <Button
-            onClick={() => handleSubmitExam(true)}
-            disabled={isSubmitting}
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-          >
-            Test Auto-Submit
-          </Button>
+
         </div>
 
         {/* Desktop: Original horizontal layout */}
@@ -1221,16 +1366,7 @@ export default function ExamPage() {
               )}
             </Button>
             
-            {/* Test button for timer expiration */}
-            <Button
-              onClick={() => handleSubmitExam(true)}
-              disabled={isSubmitting}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              Test Auto-Submit
-            </Button>
+
           </div>
         </div>
       </div>

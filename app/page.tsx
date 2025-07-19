@@ -53,7 +53,7 @@ export default function Home() {
                   <div>
                     <span className="text-lg font-semibold font-handwriting">Teacher Portal</span>
                     <p className="text-sm text-muted-foreground font-code mt-2">
-                      Coming Soon
+                      Coming Soon!
                     </p>
                   </div>
                 </div>

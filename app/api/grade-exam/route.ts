@@ -13,106 +13,78 @@ export async function POST(request: NextRequest) {
 
     // Validate environment variables first
     if (!validateEnvironment()) {
-      return NextResponse.json(
-        {
-          error: "Configuration error",
-          message: "The exam grading service is not properly configured. Please check environment variables.",
-          isMock: true,
-          debug: {
-            environment: process.env.NODE_ENV,
-            hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-            hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-            hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-            hasJwtSecret: !!process.env.JWT_SECRET
-          }
-        },
-        { status: 500 },
-      )
+      console.log("Environment validation failed, using fallback grading")
+      const fallbackGrading = generateFallbackGrading(examData, answers)
+      return NextResponse.json({
+        ...fallbackGrading,
+        isMock: true,
+        mockMessage: "Using automated grading - configuration incomplete",
+      })
     }
 
     // Check if OpenAI API key is available
     const apiKey = getOpenAIKey()
     if (!apiKey) {
-      console.error("OpenAI API key not found")
-      return NextResponse.json(
-        {
-          error: "OpenAI API key not configured",
-          isMock: true,
-          mockMessage: "Using mock grading - OpenAI API key not available",
-        },
-        { status: 500 },
-      )
+      console.log("OpenAI API key not found, using fallback grading")
+      const fallbackGrading = generateFallbackGrading(examData, answers)
+      return NextResponse.json({
+        ...fallbackGrading,
+        isMock: true,
+        mockMessage: "Using automated grading - OpenAI API key not available",
+      })
     }
 
     // Set the environment variable for the AI SDK
     process.env.OPENAI_API_KEY = apiKey
 
     try {
-      const prompt = `Grade this exam and provide detailed feedback for each question. IMPORTANT: Write all feedback as if speaking directly TO the student, not ABOUT the student.
+      const prompt = `Grade this exam quickly. Write feedback directly TO the student (use "you", not "the student").
 
-EXAM DETAILS:
-Title: ${examData.title}
-Total Questions: ${examData.questions.length}
-Total Points: ${examData.totalPoints}
+EXAM: ${examData.title} (${examData.questions.length} questions, ${examData.totalPoints} points)
 
-QUESTIONS AND STUDENT ANSWERS:
+QUESTIONS:
 ${examData.questions
   .map((q: any, index: number) => {
-    const userAnswer = answers[q.id] || "No answer provided"
-    return `
-Question ${index + 1} (${q.points} points):
-Type: ${q.type}
-Question: ${q.question}
-${q.type === "multiple-choice" ? `Options: ${q.options?.join(", ")}` : ""}
-Correct Answer: ${q.correctAnswer}
-Student Answer: ${userAnswer}
-`
+    const userAnswer = answers[q.id] || "No answer"
+    return `Q${index + 1}(${q.points}pts): ${q.type} - "${q.question}" | Correct: "${q.correctAnswer}" | Student: "${userAnswer}"`
   })
   .join("\n")}
 
-GRADING REQUIREMENTS:
-1. For multiple choice questions: Award full points if the student answer exactly matches the correct answer, 0 points otherwise
-2. For short answer questions: Award partial credit based on the quality and accuracy of the response
-3. Provide specific feedback for each question explaining why points were awarded or deducted
-4. Calculate the total score and percentage
-5. Provide overall feedback on the student's performance
+RULES: Multiple choice = exact match gets full points. Short answer = partial credit for length/quality. Be encouraging.
 
-FEEDBACK STYLE REQUIREMENTS:
-- Write ALL feedback as if speaking directly TO the student (use "you", "your", etc.)
-- Do NOT use third-person language like "the student", "they", "their"
-- Start feedback with encouraging phrases like "Great job!", "Correct!", "Excellent work!", "Well done!" for correct answers
-- For incorrect answers, be encouraging but specific about what needs improvement
-- Make the overall feedback personal and motivating
-- Use the student's name when possible in the overall feedback
-
-RESPONSE FORMAT - Return ONLY valid JSON in this exact structure:
+Return ONLY this JSON:
 {
   "totalScore": number,
   "maxScore": ${examData.totalPoints},
   "percentage": number,
-  "feedback": "Overall feedback speaking directly to the student about their performance",
+  "feedback": "Brief encouraging feedback to student",
   "questionResults": [
     {
       "questionId": number,
-      "userAnswer": "student's answer",
+      "userAnswer": "answer",
       "isCorrect": boolean,
       "pointsEarned": number,
       "maxPoints": number,
-      "feedback": "specific feedback for this question speaking directly to the student",
-      "correctAnswer": "correct answer for reference"
+      "feedback": "Brief feedback to student",
+      "correctAnswer": "correct answer"
     }
   ]
-}
+}`
 
-Grade the exam now:`
+      // Add timeout for grading (15 seconds max)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Grading timeout')), 15000)
+      )
 
-      const { text } = await generateText({
-        model: openai("gpt-4o"),
+      const gradingPromise = generateText({
+        model: openai("gpt-4o-mini"),
         prompt,
-        temperature: 0.3,
-        maxTokens: 4000,
+        temperature: 0.1,
+        maxTokens: 1500,
       })
+
+      const result = await Promise.race([gradingPromise, timeoutPromise]) as any
+      const { text } = result
 
       // Clean the response to ensure it's valid JSON
       let cleanedText = text.trim()
@@ -123,7 +95,13 @@ Grade the exam now:`
         cleanedText = cleanedText.replace(/```\n?/, "").replace(/\n?```$/, "")
       }
 
-      const gradingResults = JSON.parse(cleanedText)
+      let gradingResults
+      try {
+        gradingResults = JSON.parse(cleanedText)
+      } catch (parseError) {
+        console.error("Failed to parse AI response as JSON:", parseError)
+        throw new Error("AI response was not valid JSON")
+      }
 
       // Validate the grading structure
       if (!gradingResults.questionResults || !Array.isArray(gradingResults.questionResults)) {
@@ -134,12 +112,17 @@ Grade the exam now:`
     } catch (aiError) {
       console.error("OpenAI grading failed:", aiError)
 
+      // Check if it's a timeout error
+      const isTimeout = aiError instanceof Error && aiError.message === 'Grading timeout'
+      
       // Return enhanced fallback grading
       const fallbackGrading = generateFallbackGrading(examData, answers)
       return NextResponse.json({
         ...fallbackGrading,
         isMock: true,
-        mockMessage: "Using automated grading - OpenAI grading failed",
+        mockMessage: isTimeout 
+          ? "Using automated grading - grading took too long" 
+          : "Using automated grading - OpenAI grading failed",
       })
     }
   } catch (error) {
