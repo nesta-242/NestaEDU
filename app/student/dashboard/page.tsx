@@ -964,20 +964,20 @@ export default function DashboardPage() {
                     className="block"
                   >
                     <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group active:bg-muted active:scale-98">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         {getScoreIcon(exam.percentage)}
-                        <div>
-                          <p className="font-medium text-sm group-hover:text-primary transition-colors">{capitalizeSubject(exam.subject)}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm group-hover:text-primary transition-colors truncate">{capitalizeSubject(exam.subject)}</p>
                           <p className="text-xs text-muted-foreground">
                             {exam.score}/{exam.max_score} points
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0 ml-4">
                         <span className={`font-bold text-sm ${getScoreColor(exam.percentage)}`}>{exam.percentage}%</span>
                         <p className="text-xs text-muted-foreground">{new Date(exam.created_at).toLocaleDateString()}</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 ml-2" />
                     </div>
                   </Link>
                 ))}

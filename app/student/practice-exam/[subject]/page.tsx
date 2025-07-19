@@ -88,6 +88,7 @@ export default function ExamPage() {
   // Add state for grading progress
   const [gradingProgress, setGradingProgress] = useState(0)
   const [isGrading, setIsGrading] = useState(false)
+  const [isTimeExpiredGrading, setIsTimeExpiredGrading] = useState(false)
   
   // Add flag to prevent state restoration conflicts
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -107,6 +108,7 @@ export default function ExamPage() {
           setCurrentQuestion(state.currentQuestion || 0)
           setAnswers(state.answers || {})
           setIsTimeExpired(state.isTimeExpired || false)
+          setIsTimeExpiredGrading(state.isTimeExpiredGrading || false)
         }
       } catch (error) {
         console.error("Error parsing saved exam state:", error)
@@ -125,13 +127,14 @@ export default function ExamPage() {
         currentQuestion,
         answers,
         isTimeExpired,
+        isTimeExpiredGrading,
         showResults
       }
       localStorage.setItem(`exam-state-${subject}`, JSON.stringify(stateToSave))
     } else {
       localStorage.removeItem(`exam-state-${subject}`)
     }
-  }, [examStarted, timeRemaining, currentQuestion, answers, isTimeExpired, showResults, subject])
+  }, [examStarted, timeRemaining, currentQuestion, answers, isTimeExpired, isTimeExpiredGrading, showResults, subject])
 
   // Debug logging for timer state changes
   useEffect(() => {
@@ -140,9 +143,10 @@ export default function ExamPage() {
       timeRemaining,
       showResults,
       isTimeExpired,
+      isTimeExpiredGrading,
       subject
     })
-  }, [examStarted, timeRemaining, showResults, isTimeExpired, subject])
+  }, [examStarted, timeRemaining, showResults, isTimeExpired, isTimeExpiredGrading, subject])
 
   // Load user first name from API or localStorage
   useEffect(() => {
@@ -192,8 +196,9 @@ export default function ExamPage() {
       console.log("Timer expired! Setting isTimeExpired to true")
       setIsTimeExpired(true)
       
-      // Start grading progress immediately
+      // Start grading progress immediately with time expired flag
       setIsGrading(true)
+      setIsTimeExpiredGrading(true)
       setGradingProgress(0)
       
       // Small delay to ensure toast appears before submission
@@ -484,6 +489,12 @@ export default function ExamPage() {
     // Start grading progress if not already started
     if (!isGrading) {
       setIsGrading(true)
+      // Set time expired flag only if this is a time expiration submission
+      if (isTimeExpired) {
+        setIsTimeExpiredGrading(true)
+      } else {
+        setIsTimeExpiredGrading(false)
+      }
       setGradingProgress(0)
     }
     
@@ -1131,14 +1142,31 @@ export default function ExamPage() {
           
           {/* Grading Progress Bar */}
           {isGrading && (
-            <div className="bg-red-50/50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/50 rounded-lg p-4 mb-4">
+            <div className={`rounded-lg p-4 mb-4 ${
+              isTimeExpiredGrading 
+                ? "bg-red-50/50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/50" 
+                : "bg-gray-50/50 dark:bg-gray-950/30 border border-gray-200/50 dark:border-gray-800/50"
+            }`}>
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                <div className={`flex items-center gap-2 ${
+                  isTimeExpiredGrading 
+                    ? "text-red-700 dark:text-red-300" 
+                    : "text-gray-700 dark:text-gray-300"
+                }`}>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="font-semibold">Time's Up! Submitting & Grading Your Exam...</span>
+                  <span className="font-semibold">
+                    {isTimeExpiredGrading 
+                      ? "Time's Up! Submitting & Grading Your Exam..." 
+                      : "Submitting & Grading Your Exam..."
+                    }
+                  </span>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                  <div className={`flex justify-between text-sm ${
+                    isTimeExpiredGrading 
+                      ? "text-red-600 dark:text-red-400" 
+                      : "text-gray-600 dark:text-gray-400"
+                  }`}>
                     <span>Progress</span>
                     <span>{Math.round(gradingProgress)}%</span>
                   </div>
@@ -1162,7 +1190,11 @@ export default function ExamPage() {
                     ></div>
                   </div>
                   </div>
-                  <div className="text-xs text-red-500 dark:text-red-400">
+                  <div className={`text-xs ${
+                    isTimeExpiredGrading 
+                      ? "text-red-500 dark:text-red-400" 
+                      : "text-gray-500 dark:text-gray-400"
+                  }`}>
                     {gradingProgress < 20 && "Analyzing your answers..."}
                     {gradingProgress >= 20 && gradingProgress < 40 && "Processing questions..."}
                     {gradingProgress >= 40 && gradingProgress < 60 && "Evaluating responses..."}
