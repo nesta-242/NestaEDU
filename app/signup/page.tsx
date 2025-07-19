@@ -212,7 +212,7 @@ export default function SignUpPage() {
               <span className="text-2xl font-bold">Nesta Education <span className="text-amber-500">(Beta)</span></span>
             </Link>
           </div>
-          <CardTitle className="text-2xl">Create Your Account</CardTitle>
+          <CardTitle className="text-xl">Create Your Account</CardTitle>
           <CardDescription className="font-code">Be the first of many students to learn with AI-powered tutoring.</CardDescription>
         </CardHeader>
         <CardContent>

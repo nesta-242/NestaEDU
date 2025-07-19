@@ -75,12 +75,14 @@ export default function ExamPage() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [examResults, setExamResults] = useState<ExamResults | null>(null)
-  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const [showMathKeyboard, setShowMathKeyboard] = useState(false)
   const [showCalculator, setShowCalculator] = useState(false)
   const [activeTextArea, setActiveTextArea] = useState<HTMLTextAreaElement | null>(null)
   // Add state for user first name
   const [firstName, setFirstName] = useState<string>("Student")
+  // Add state to track time expiration submission
+  const [isTimeExpired, setIsTimeExpired] = useState(false)
 
   // Load user first name from API or localStorage
   useEffect(() => {
@@ -112,13 +114,32 @@ export default function ExamPage() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout
-    if (examStarted && timeRemaining > 0 && !showResults) {
+    
+    console.log("Timer effect - examStarted:", examStarted, "timeRemaining:", timeRemaining, "showResults:", showResults, "isTimeExpired:", isTimeExpired)
+    
+    // Only start timer if exam is started, timeRemaining is not null, greater than 0, and not showing results
+    if (examStarted && timeRemaining !== null && timeRemaining > 0 && !showResults && !isTimeExpired) {
+      console.log("Starting timer countdown from:", timeRemaining)
       timer = setTimeout(() => setTimeRemaining(timeRemaining - 1), 1000)
-    } else if (timeRemaining === 0 && examStarted && !showResults) {
-      handleSubmitExam()
+    } 
+    // Only trigger expiration if exam is started, timeRemaining is exactly 0, not showing results, and not already expired
+    else if (examStarted && timeRemaining === 0 && !showResults && !isTimeExpired) {
+      console.log("Timer expired! Setting isTimeExpired to true")
+      setIsTimeExpired(true)
+      toast({
+        title: "Time's up!",
+        description: "Your exam is now being submitted for grading.",
+        duration: 3000,
+      })
+      // Small delay to ensure toast appears before submission
+      setTimeout(() => {
+        console.log("Calling handleSubmitExam with timeExpired=true")
+        handleSubmitExam(true)
+      }, 100)
     }
+    
     return () => clearTimeout(timer)
-  }, [timeRemaining, examStarted, showResults])
+  }, [timeRemaining, examStarted, showResults, isTimeExpired])
 
   // Handle browser navigation warning
   useEffect(() => {
@@ -230,17 +251,22 @@ export default function ExamPage() {
     setExamResults(null)
     setShowResults(false)
     setExamStarted(false)
+    setIsTimeExpired(false)
 
-    // Simulate progress updates
-    const progressInterval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev >= 90) return prev // Stop at 90% until actual completion
-        const increment = Math.random() * 15 + 5 // Increment by 5-20%
-        return Math.min(prev + increment, 90) // Ensure we don't exceed 90%
-      })
-    }, 300)
+    const startTime = Date.now()
+    const estimatedDuration = 8000 // Estimate 8 seconds for exam generation
+
+    // Start with initial progress
+    setLoadingProgress(5)
 
     try {
+      // Create a progress interval that estimates real progress based on time elapsed
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime
+        const estimatedProgress = Math.min((elapsed / estimatedDuration) * 85, 85) // Go up to 85%
+        setLoadingProgress(Math.max(5, estimatedProgress))
+      }, 200)
+
       const response = await fetch("/api/generate-exam", {
         method: "POST",
         headers: {
@@ -250,6 +276,9 @@ export default function ExamPage() {
           subject: subject,
         }),
       })
+
+      // Clear the progress interval since we're done
+      clearInterval(progressInterval)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -261,15 +290,16 @@ export default function ExamPage() {
         throw new Error(data.error)
       }
 
-      // Complete the progress bar
+      // Show completion progress
       setLoadingProgress(100)
       
       // Small delay to show 100% completion
-      await new Promise(resolve => setTimeout(resolve, 200))
+      await new Promise(resolve => setTimeout(resolve, 300))
 
       setExamData(data)
       const examInfo = getExamInfo()
-      setTimeRemaining(examInfo.timeLimit * 60) // Convert minutes to seconds
+      // Don't set timer here - it will be set when exam starts
+      setTimeRemaining(null) // Initialize to null until exam starts
 
       if (data.isMock) {
         toast({
@@ -293,13 +323,17 @@ export default function ExamPage() {
         variant: "destructive",
       })
     } finally {
-      clearInterval(progressInterval)
       setIsLoading(false)
       setLoadingProgress(0)
     }
   }
 
   const handleAnswerChange = (questionId: number, answer: string) => {
+    if (isTimeExpired || isSubmitting) {
+      console.log("Answer change blocked - exam is locked")
+      return
+    }
+    console.log("Answer change allowed - setting answer for question", questionId)
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
@@ -340,12 +374,12 @@ export default function ExamPage() {
     }
   }
 
-  const handleSubmitExam = async () => {
+  const handleSubmitExam = async (isTimeExpired = false) => {
     if (!examData) return
 
     const unansweredQuestions = examData.questions.filter((q) => !answers[q.id] || answers[q.id].trim() === "")
 
-    if (unansweredQuestions.length > 0) {
+    if (unansweredQuestions.length > 0 && !isTimeExpired) {
       toast({
         title: "Incomplete Exam",
         description: `Please answer all questions before submitting. ${unansweredQuestions.length} questions remaining.`,
@@ -403,7 +437,7 @@ export default function ExamPage() {
         maxScore: results.maxScore,
         percentage: results.percentage,
         totalQuestions: examData.questions.length,
-        timeSpent: Math.round((getExamInfo().timeLimit * 60 - timeRemaining) / 60),
+        timeSpent: Math.round((getExamInfo().timeLimit * 60 - (timeRemaining || 0)) / 60),
         answers: {
           userAnswers: answers,
           questionResults: results.questionResults,
@@ -442,10 +476,16 @@ export default function ExamPage() {
   }
 
   const startExam = () => {
+    console.log("Starting exam - setting examStarted to true")
     setExamStarted(true)
+    const examInfo = getExamInfo()
+    // For testing: set to 10 seconds instead of full time
+    const testTime = 10 // Convert minutes to seconds
+    console.log("Setting timeRemaining to:", testTime)
+    setTimeRemaining(testTime)
     toast({
       title: "Exam Started",
-      description: `You have ${getExamInfo().timeLimit} minutes to complete the exam. Good luck!`,
+      description: `You have ${examInfo.timeLimit} minutes to complete the exam. Good luck!`,
       duration: 3000,
     })
   }
@@ -459,7 +499,8 @@ export default function ExamPage() {
     return (getAnsweredCount() / examData.questions.length) * 100
   }
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number | null) => {
+    if (seconds === null) return "0:00"
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = seconds % 60
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
@@ -509,10 +550,12 @@ export default function ExamPage() {
                   </div>
                 </div>
                 <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                  {loadingProgress < 30 && "Analyzing subject requirements..."}
-                  {loadingProgress >= 30 && loadingProgress < 60 && "Generating questions..."}
-                  {loadingProgress >= 60 && loadingProgress < 90 && "Creating answer options..."}
-                  {loadingProgress >= 90 && loadingProgress < 100 && "Finalizing exam..."}
+                  {loadingProgress < 20 && "Initializing exam generation..."}
+                  {loadingProgress >= 20 && loadingProgress < 40 && "Analyzing subject requirements..."}
+                  {loadingProgress >= 40 && loadingProgress < 60 && "Generating personalized questions..."}
+                  {loadingProgress >= 60 && loadingProgress < 80 && "Creating answer options and explanations..."}
+                  {loadingProgress >= 80 && loadingProgress < 95 && "Finalizing exam structure..."}
+                  {loadingProgress >= 95 && loadingProgress < 100 && "Preparing your exam..."}
                   {loadingProgress === 100 && "Exam ready!"}
                 </div>
               </div>
@@ -835,29 +878,35 @@ export default function ExamPage() {
   const currentQ = examData.questions[currentQuestion]
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto px-2 pt-6 sm:pt-10 exam-container">
       {/* Header with progress */}
       <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{examInfo.title}</h1>
-          <p className="text-muted-foreground">
-            Question {currentQuestion + 1} of {examData.questions.length}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="flex items-center justify-center gap-2 text-lg font-mono bg-muted/50 rounded-lg px-3 py-2 sm:bg-transparent sm:px-0 sm:py-0">
-            <Clock className="h-5 w-5" />
-            <span className={timeRemaining < 300 ? "text-red-600" : ""}>{formatTime(timeRemaining)}</span>
-          </div>
-          <Button onClick={generateExam} variant="outline" size="sm" className="w-full sm:w-auto">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            New Questions
-          </Button>
-        </div>
+        <Card className="flex-1">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">{examInfo.title}</h1>
+                <p className="text-muted-foreground">
+                  Question {currentQuestion + 1} of {examData.questions.length}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center justify-center gap-2 text-lg font-mono bg-muted/50 rounded-lg px-3 py-2">
+                  <Clock className="h-5 w-5" />
+                  <span className={timeRemaining !== null && timeRemaining < 300 ? "text-red-600" : ""}>{formatTime(timeRemaining)}</span>
+                </div>
+                <Button onClick={generateExam} variant="outline" size="sm" className="w-full sm:w-auto">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  New Questions
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Progress bar */}
-      <div className="space-y-2">
+      {/* Progress bar and Question Navigation */}
+      <div className="space-y-2 exam-content">
         <div className="flex justify-between text-sm">
           <span>Progress</span>
           <span>
@@ -865,10 +914,112 @@ export default function ExamPage() {
           </span>
         </div>
         <Progress value={getProgressPercentage()} className="h-2" />
+        
+        {/* Question Navigation - Desktop */}
+        <div className="hidden md:flex gap-1 mt-3 question-nav">
+          {examData.questions.map((_, index) => (
+            <Button
+              key={index}
+              variant={
+                currentQuestion === index
+                  ? "default"
+                  : answers[examData.questions[index].id]?.trim()
+                    ? "secondary"
+                    : "outline"
+              }
+              size="sm"
+              onClick={() => setCurrentQuestion(index)}
+              disabled={isTimeExpired || isSubmitting}
+              className={`flex-1 h-6 text-xs px-1 min-w-0 ${
+                currentQuestion === index
+                  ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                  : answers[examData.questions[index].id]?.trim()
+                    ? "bg-gray-700 hover:bg-gray-800 text-white border-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 dark:border-gray-600"
+                    : ""
+              }`}
+            >
+              {index + 1}
+            </Button>
+          ))}
+        </div>
+        
+        {/* Question Navigation - Mobile */}
+        <div className="md:hidden space-y-2 mt-3 question-nav">
+          {/* First row - 12 questions */}
+          <div className="flex gap-1">
+            {examData.questions.slice(0, 12).map((_, index) => (
+              <Button
+                key={index}
+                variant={
+                  currentQuestion === index
+                    ? "default"
+                    : answers[examData.questions[index].id]?.trim()
+                      ? "secondary"
+                      : "outline"
+                }
+                size="sm"
+                onClick={() => setCurrentQuestion(index)}
+                disabled={isTimeExpired || isSubmitting}
+                className={`flex-1 h-6 text-xs px-1 min-w-0 ${
+                  currentQuestion === index
+                    ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                    : answers[examData.questions[index].id]?.trim()
+                      ? "bg-gray-700 hover:bg-gray-800 text-white border-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 dark:border-gray-600"
+                      : ""
+                }`}
+              >
+                {index + 1}
+              </Button>
+            ))}
+          </div>
+          
+          {/* Second row - remaining questions (13 for BGCSE, fewer for BJC) */}
+          {examData.questions.length > 12 && (
+            <div className="flex gap-1">
+              {examData.questions.slice(12).map((_, index) => {
+                const actualIndex = index + 12
+                return (
+                  <Button
+                    key={actualIndex}
+                    variant={
+                      currentQuestion === actualIndex
+                        ? "default"
+                        : answers[examData.questions[actualIndex].id]?.trim()
+                          ? "secondary"
+                          : "outline"
+                    }
+                    size="sm"
+                    onClick={() => setCurrentQuestion(actualIndex)}
+                    disabled={isTimeExpired || isSubmitting}
+                    className={`flex-1 h-6 text-xs px-1 min-w-0 ${
+                      currentQuestion === actualIndex
+                        ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                        : answers[examData.questions[actualIndex].id]?.trim()
+                          ? "bg-gray-700 hover:bg-gray-800 text-white border-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 dark:border-gray-600"
+                          : ""
+                    }`}
+                  >
+                    {actualIndex + 1}
+                  </Button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Current question */}
       {currentQ && (
+        <div className="exam-content">
+        <>
+          {isTimeExpired && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-5 w-5" />
+                <span className="font-semibold">Time's Up! Your exam is now being submitted for grading.</span>
+              </div>
+            </div>
+          )}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -885,6 +1036,7 @@ export default function ExamPage() {
                 <RadioGroup
                   value={answers[currentQ.id] || ""}
                   onValueChange={(value) => handleAnswerChange(currentQ.id, value)}
+                  disabled={isTimeExpired || isSubmitting}
                 >
                   {currentQ.options.map((option, index) => (
                     <div key={index} className="flex items-center space-x-2">
@@ -904,6 +1056,7 @@ export default function ExamPage() {
                       variant={showMathKeyboard ? "default" : "outline"}
                       size="sm"
                       className="flex items-center gap-2"
+                      disabled={isTimeExpired || isSubmitting}
                     >
                       <Sigma className="h-4 w-4" />
                       Math Keyboard
@@ -913,6 +1066,7 @@ export default function ExamPage() {
                       variant={showCalculator ? "default" : "outline"}
                       size="sm"
                       className="flex items-center gap-2"
+                      disabled={isTimeExpired || isSubmitting}
                     >
                       <CalculatorIcon className="h-4 w-4" />
                       Calculator
@@ -933,6 +1087,7 @@ export default function ExamPage() {
                   onFocus={handleTextAreaFocus}
                   data-question-id={currentQ.id}
                   className="min-h-[120px]"
+                  disabled={isTimeExpired || isSubmitting}
                 />
 
                 {/* Math Tools for Short Answer */}
@@ -943,6 +1098,7 @@ export default function ExamPage() {
                       variant={showMathKeyboard ? "default" : "outline"}
                       size="sm"
                       className="flex items-center gap-2"
+                      disabled={isTimeExpired || isSubmitting}
                     >
                       <Sigma className="h-4 w-4" />
                       Math Keyboard
@@ -952,6 +1108,7 @@ export default function ExamPage() {
                       variant={showCalculator ? "default" : "outline"}
                       size="sm"
                       className="flex items-center gap-2"
+                      disabled={isTimeExpired || isSubmitting}
                     >
                       <CalculatorIcon className="h-4 w-4" />
                       Calculator
@@ -966,81 +1123,128 @@ export default function ExamPage() {
             )}
           </CardContent>
         </Card>
+        </>
+        </div>
       )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2">
+      <div className="exam-content">
+        {/* Mobile: Stacked layout */}
+        <div className="md:hidden space-y-3 mobile-nav-buttons">
+          {/* Question Navigation */}
+          <div className="flex gap-2 justify-center exam-navigation">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+              disabled={currentQuestion === 0 || isTimeExpired || isSubmitting}
+              className="flex-1"
+            >
+              Previous
+            </Button>
+            <Button
+              // Highlighted: black in light mode, white in dark mode
+              className="flex-1 bg-black text-white dark:bg-white dark:text-black border-black dark:border-white border"
+              onClick={() => setCurrentQuestion(Math.min(examData.questions.length - 1, currentQuestion + 1))}
+              disabled={currentQuestion === examData.questions.length - 1 || isTimeExpired || isSubmitting}
+            >
+              Next
+            </Button>
+          </div>
+
+          {/* Submit Button */}
           <Button
-            variant="outline"
-            onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-            disabled={currentQuestion === 0}
+            onClick={() => handleSubmitExam(false)}
+            disabled={isSubmitting || getAnsweredCount() < examData.questions.length}
+            className="w-full bg-green-600 hover:bg-green-700"
           >
-            Previous
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Grading Exam...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Submit Exam ({getAnsweredCount()}/{examData.questions.length})
+              </>
+            )}
           </Button>
+
+          {/* Test button for timer expiration - hidden on mobile to save space */}
           <Button
-            // Highlighted: black in light mode, white in dark mode
-            className="bg-black text-white dark:bg-white dark:text-black border-black dark:border-white border"
-            onClick={() => setCurrentQuestion(Math.min(examData.questions.length - 1, currentQuestion + 1))}
-            disabled={currentQuestion === examData.questions.length - 1}
+            onClick={() => handleSubmitExam(true)}
+            disabled={isSubmitting}
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
           >
-            Next
+            Test Auto-Submit
           </Button>
         </div>
 
-        <Button
-          onClick={handleSubmitExam}
-          disabled={isSubmitting || getAnsweredCount() < examData.questions.length}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Grading Exam...
-            </>
-          ) : (
-            <>
-              <Send className="mr-2 h-4 w-4" />
-              Submit Exam ({getAnsweredCount()}/{examData.questions.length})
-            </>
-          )}
-        </Button>
+        {/* Desktop: Original horizontal layout */}
+        <div className="hidden md:flex items-center justify-between exam-navigation">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+              disabled={currentQuestion === 0 || isTimeExpired || isSubmitting}
+            >
+              Previous
+            </Button>
+            <Button
+              // Highlighted: black in light mode, white in dark mode
+              className="bg-black text-white dark:bg-white dark:text-black border-black dark:border-white border"
+              onClick={() => setCurrentQuestion(Math.min(examData.questions.length - 1, currentQuestion + 1))}
+              disabled={currentQuestion === examData.questions.length - 1 || isTimeExpired || isSubmitting}
+            >
+              Next
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleSubmitExam(false)}
+              disabled={isSubmitting || getAnsweredCount() < examData.questions.length}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Grading Exam...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit Exam ({getAnsweredCount()}/{examData.questions.length})
+                </>
+              )}
+            </Button>
+            
+            {/* Test button for timer expiration */}
+            <Button
+              onClick={() => handleSubmitExam(true)}
+              disabled={isSubmitting}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              Test Auto-Submit
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Question navigation grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Question Navigation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-2">
-            {examData.questions.map((_, index) => (
-              <Button
-                key={index}
-                variant={
-                  currentQuestion === index
-                    ? "default"
-                    : answers[examData.questions[index].id]?.trim()
-                      ? "secondary"
-                      : "outline"
-                }
-                size="sm"
-                onClick={() => setCurrentQuestion(index)}
-                className="h-10"
-              >
-                {index + 1}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Math Tools - positioned at bottom */}
-      {showMathKeyboard && (
-        <MathKeyboard onInsert={handleMathSymbolInsert} onClose={() => setShowMathKeyboard(false)} />
-      )}
+      <div className="exam-content">
+        {showMathKeyboard && (
+          <MathKeyboard onInsert={handleMathSymbolInsert} onClose={() => setShowMathKeyboard(false)} />
+        )}
 
-      {showCalculator && <Calculator onClose={() => setShowCalculator(false)} onFocusChange={handleCalculatorFocusChange} />}
+        {showCalculator && <Calculator onClose={() => setShowCalculator(false)} onFocusChange={handleCalculatorFocusChange} />}
+      </div>
     </div>
   )
 }

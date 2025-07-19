@@ -32,6 +32,7 @@ export default function AITutorPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const questionPrefilledRef = useRef(false)
   const { toast } = useToast()
   const searchParams = useSearchParams()
 
@@ -132,11 +133,27 @@ export default function AITutorPage() {
     }
   }, [searchParams, toast])
 
-  // Handle subject parameter from URL
+  // Handle subject and question parameters from URL
   useEffect(() => {
     const subjectParam = searchParams.get("subject")
+    const questionParam = searchParams.get("question")
+    
     if (subjectParam && ["math", "science", "general"].includes(subjectParam)) {
       setSelectedSubject(subjectParam)
+    }
+    
+    // Pre-fill input with question if provided (only once)
+    if (questionParam && !questionPrefilledRef.current) {
+      const decodedQuestion = decodeURIComponent(questionParam)
+      setInput(decodedQuestion)
+      questionPrefilledRef.current = true
+      
+      // Focus the textarea after a short delay to ensure it's rendered
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+        }
+      }, 100)
     }
   }, [searchParams])
 

@@ -23,7 +23,8 @@ import {
   BarChart3,
   ArrowRight,
   Plus,
-  MessageSquare
+  MessageSquare,
+  FlaskConical
 } from "lucide-react"
 import Link from "next/link"
 import { capitalizeSubject } from "@/lib/utils"
@@ -885,12 +886,51 @@ export default function DashboardPage() {
               <div className="text-center py-6">
                 <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No sessions yet</p>
-                <p className="text-xs text-muted-foreground">Start your first conversation!</p>
-                <Link href="/student/tutor">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Start Learning
-                  </Button>
-                </Link>
+                <p className="text-xs text-muted-foreground mb-4">Try these example questions to get started!</p>
+                
+                <div className="space-y-3">
+                  {/* Mathematics Example */}
+                  <Link href="/student/tutor?subject=math&question=Solve%20for%20x%20in%20x%5E2%2B3%3D19">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start text-left h-auto p-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <FlaskConical className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Mathematics</p>
+                          <p className="text-xs text-muted-foreground">Solve for x in x²+3=19</p>
+                        </div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  {/* Science Example */}
+                  <Link href="/student/tutor?subject=science&question=How%20many%20carbons%20are%20in%20Glucose%3F">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start text-left h-auto p-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <BookOpen className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Science</p>
+                          <p className="text-xs text-muted-foreground">How many carbons are in Glucose?</p>
+                        </div>
+                      </div>
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="mt-4">
+                  <Link href="/student/tutor">
+                    <Button variant="outline" size="sm">
+                      Start Learning
+                    </Button>
+                  </Link>
+                </div>
               </div>
             )}
           </CardContent>

@@ -1,6 +1,6 @@
 import { CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { GraduationCap, PenTool } from "lucide-react"
+import { GraduationCap, PenTool, Apple } from "lucide-react"
 
 export default function Home() {
   return (
@@ -29,14 +29,14 @@ export default function Home() {
         <main className="max-w-md mx-auto w-full flex justify-center mb-16">
           <div className="sketch-card w-full">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-handwriting">Begin Your Journey</CardTitle>
+              <CardTitle className="text-2xl font-handwriting">Begin Your Journey:</CardTitle>
             </CardHeader>
 
             <CardContent className="grid gap-6">
-              {/* Student Portal Only */}
+              {/* Student Portal */}
               <Link href="/login" className="w-full">
                 <div className="sketch-button w-full h-auto p-6 flex items-start gap-4 hover:bg-accent/80 transition-colors">
-                  <GraduationCap className="w-6 h-6 text-primary" />
+                  <GraduationCap className="w-6 h-6 text-primary flex-shrink-0" />
                   <div>
                     <span className="text-lg font-semibold font-handwriting">Student Portal</span>
                     <p className="text-sm text-muted-foreground font-code mt-2">
@@ -45,6 +45,19 @@ export default function Home() {
                   </div>
                 </div>
               </Link>
+
+              {/* Teacher Portal - Coming Soon */}
+              <div className="w-full">
+                <div className="sketch-button w-full h-auto p-6 flex items-start gap-4 transition-colors opacity-60 cursor-not-allowed">
+                  <Apple className="w-6 h-6 text-primary flex-shrink-0" />
+                  <div>
+                    <span className="text-lg font-semibold font-handwriting">Teacher Portal</span>
+                    <p className="text-sm text-muted-foreground font-code mt-2">
+                      Coming Soon
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3">
