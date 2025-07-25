@@ -53,6 +53,7 @@ If you want to use your own API key:
 - **Subject Specialization**: Math and Science tutoring with curriculum alignment
 - **Image Analysis**: Can analyze uploaded images and diagrams
 - **Mathematical Notation**: Clean, readable math formatting
+- **Voice Dictation**: Speak your questions using the device microphone for hands-free interaction
 
 ### Exam System
 - **AI-Generated Exams**: Creates custom exams based on subject and difficulty

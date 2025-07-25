@@ -3,6 +3,14 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+
+// Type declarations for Web Speech API
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any
+    SpeechRecognition: any
+  }
+}
 import { useChat } from "ai/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Send, ImageIcon, CalculatorIcon, Sigma, Bot, Loader2, X, BookOpen, FlaskConical, ArrowRight } from "lucide-react"
+import { Send, ImageIcon, CalculatorIcon, Sigma, Bot, Loader2, X, BookOpen, FlaskConical, ArrowRight, Mic, MicOff } from "lucide-react"
 import { MathKeyboard } from "@/components/math-keyboard"
 import { capitalizeSubject } from "@/lib/utils"
 import { Calculator } from "@/components/calculator"
@@ -28,8 +36,16 @@ export default function AITutorPage() {
   const [isLoadingSession, setIsLoadingSession] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<any>({})
+  const [isRecording, setIsRecording] = useState(false)
+  const [recognition, setRecognition] = useState<any>(null)
+  const [isVoiceActive, setIsVoiceActive] = useState(false)
+  const [waveformHeights, setWaveformHeights] = useState([4, 4, 4, 4, 4])
+  const [audioLevel, setAudioLevel] = useState(0)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const questionPrefilledRef = useRef(false)
@@ -168,6 +184,107 @@ export default function AITutorPage() {
       }, 100)
     }
   }, [messages, isLoading])
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition
+      const recognitionInstance = new SpeechRecognition()
+      
+      recognitionInstance.continuous = true
+      recognitionInstance.interimResults = true
+      recognitionInstance.lang = 'en-US'
+      
+      recognitionInstance.onstart = () => {
+        setIsRecording(true)
+        toast({
+          title: "Recording Started",
+          description: "Speak now to dictate your message...",
+        })
+      }
+      
+      recognitionInstance.onresult = (event: any) => {
+        let finalTranscript = ''
+        let interimTranscript = ''
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript
+          } else {
+            interimTranscript += transcript
+          }
+        }
+        
+        if (finalTranscript) {
+          const processedTranscript = addSmartPunctuation(finalTranscript)
+          setInput(prev => {
+            // Add space before new text if previous text doesn't end with space or is empty
+            const needsSpace = prev.trim() && !prev.endsWith(' ')
+            return prev + (needsSpace ? ' ' : '') + processedTranscript
+          })
+        }
+      }
+      
+      recognitionInstance.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error)
+        setIsRecording(false)
+        toast({
+          title: "Recording Error",
+          description: "Failed to record audio. Please try again.",
+          variant: "destructive",
+        })
+      }
+      
+      recognitionInstance.onend = () => {
+        setIsRecording(false)
+        stopAudioAnalysis()
+        toast({
+          title: "Recording Stopped",
+          description: "Voice recording has ended.",
+        })
+      }
+      
+      setRecognition(recognitionInstance)
+    }
+
+    // Cleanup function to stop recording when component unmounts
+    return () => {
+      if (recognition) {
+        recognition.stop()
+      }
+      stopAudioAnalysis()
+    }
+  }, [toast])
+
+  // Update waveform based on real-time audio level
+  useEffect(() => {
+    if (!isRecording) {
+      setWaveformHeights([4, 4, 4, 4, 4])
+      return
+    }
+
+    const baseHeight = 4
+    const maxHeight = 20
+    
+    if (isVoiceActive && audioLevel > 0.010) { // Only animate if above noise threshold
+      // Create heights based on audio level with immediate response
+      const levelMultiplier = Math.max(audioLevel * 45, 3) // Slightly less aggressive scaling
+      
+      setWaveformHeights([
+        Math.min(maxHeight, baseHeight + levelMultiplier + Math.random() * 1.5),
+        Math.min(maxHeight, baseHeight + levelMultiplier * 0.8 + Math.random() * 2),
+        Math.min(maxHeight, baseHeight + levelMultiplier * 1.2 + Math.random() * 1),
+        Math.min(maxHeight, baseHeight + levelMultiplier * 0.9 + Math.random() * 1.8),
+        Math.min(maxHeight, baseHeight + levelMultiplier * 0.7 + Math.random() * 1.3),
+      ])
+    } else {
+      // Smoothly return to baseline - but only if significantly above baseline
+      setWaveformHeights(prev => 
+        prev.map(height => height > baseHeight + 1 ? Math.max(baseHeight, height * 0.8) : baseHeight)
+      )
+    }
+  }, [audioLevel, isVoiceActive, isRecording])
 
   // Save/Update chat session to database
   useEffect(() => {
@@ -390,6 +507,12 @@ export default function AITutorPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Stop recording if active
+    if (isRecording && recognition) {
+      recognition.stop()
+      stopAudioAnalysis()
+    }
+
     try {
       if (uploadedImage) {
         const currentInput = input
@@ -442,6 +565,256 @@ export default function AITutorPage() {
       setTimeout(() => {
         textareaRef.current?.focus()
       }, 100)
+    }
+  }
+
+  const addSmartPunctuation = (text: string): string => {
+    if (!text.trim()) return text
+    
+    let processedText = text.trim()
+    
+    // Convert mathematical expressions first
+    processedText = convertMathExpressions(processedText)
+    
+    // Capitalize first letter
+    processedText = processedText.charAt(0).toUpperCase() + processedText.slice(1)
+    
+    // Remove any existing punctuation at the end
+    processedText = processedText.replace(/[.!?]+$/, '')
+    
+    // Question patterns - words/phrases that typically start questions
+    const questionStarters = [
+      'what', 'when', 'where', 'why', 'who', 'how', 'which', 'whose',
+      'can', 'could', 'would', 'should', 'will', 'do', 'does', 'did',
+      'is', 'are', 'was', 'were', 'have', 'has', 'had',
+      'may', 'might', 'shall', 'am', 'isn\'t', 'aren\'t', 'wasn\'t',
+      'weren\'t', 'haven\'t', 'hasn\'t', 'hadn\'t', 'don\'t', 'doesn\'t',
+      'didn\'t', 'won\'t', 'wouldn\'t', 'shouldn\'t', 'couldn\'t',
+      'can\'t', 'may I', 'could you', 'would you', 'can you'
+    ]
+    
+    // Question patterns that can appear anywhere
+    const questionPhrases = [
+      'or not', 'right?', 'correct?', 'true?', 'false?', 'agree?',
+      'think so', 'you know', 'make sense', 'understand'
+    ]
+    
+    const lowerText = processedText.toLowerCase()
+    
+    // Check if it starts with a question word/phrase
+    const startsWithQuestion = questionStarters.some(starter => 
+      lowerText.startsWith(starter.toLowerCase() + ' ') || 
+      lowerText === starter.toLowerCase()
+    )
+    
+    // Check if it contains question phrases
+    const containsQuestionPhrase = questionPhrases.some(phrase => 
+      lowerText.includes(phrase.toLowerCase())
+    )
+    
+    // Educational context patterns - common in tutoring
+    const educationalQuestions = [
+      'explain', 'help me', 'show me', 'teach me', 'solve',
+      'calculate', 'find', 'determine', 'derive', 'prove'
+    ]
+    
+    const isEducationalQuestion = educationalQuestions.some(pattern => 
+      lowerText.includes(pattern.toLowerCase())
+    )
+    
+    // Add appropriate punctuation
+    if (startsWithQuestion || containsQuestionPhrase || 
+        (isEducationalQuestion && (lowerText.includes('how') || lowerText.includes('what')))) {
+      return processedText + '?'
+    } else {
+      return processedText + '.'
+    }
+  }
+
+  const convertMathExpressions = (text: string): string => {
+    let converted = text
+    
+    // Number word to digit conversion
+    const numberWords = {
+      'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+      'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+      'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14', 'fifteen': '15',
+      'sixteen': '16', 'seventeen': '17', 'eighteen': '18', 'nineteen': '19', 'twenty': '20'
+    }
+    
+    // Convert number words to digits
+    Object.entries(numberWords).forEach(([word, digit]) => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi')
+      converted = converted.replace(regex, digit)
+    })
+    
+    // Mathematical operations and symbols
+    const mathReplacements = [
+      // Basic operations
+      { pattern: /\bplus\b/gi, replacement: '+' },
+      { pattern: /\bminus\b/gi, replacement: '-' },
+      { pattern: /\btimes\b/gi, replacement: '×' },
+      { pattern: /\bmultiplied by\b/gi, replacement: '×' },
+      { pattern: /\bdivided by\b/gi, replacement: '÷' },
+      { pattern: /\bequals\b/gi, replacement: '=' },
+      { pattern: /\bis equal to\b/gi, replacement: '=' },
+      
+      // Comparison operators
+      { pattern: /\bgreater than\b/gi, replacement: '>' },
+      { pattern: /\bless than\b/gi, replacement: '<' },
+      { pattern: /\bgreater than or equal to\b/gi, replacement: '≥' },
+      { pattern: /\bless than or equal to\b/gi, replacement: '≤' },
+      { pattern: /\bnot equal to\b/gi, replacement: '≠' },
+      
+      // Fractions
+      { pattern: /\bone half\b/gi, replacement: '1/2' },
+      { pattern: /\bone third\b/gi, replacement: '1/3' },
+      { pattern: /\btwo thirds\b/gi, replacement: '2/3' },
+      { pattern: /\bone quarter\b/gi, replacement: '1/4' },
+      { pattern: /\bthree quarters\b/gi, replacement: '3/4' },
+      
+      // Common math terms
+      { pattern: /\bpi\b/gi, replacement: 'π' },
+      { pattern: /\btheta\b/gi, replacement: 'θ' },
+      { pattern: /\balpha\b/gi, replacement: 'α' },
+      { pattern: /\bbeta\b/gi, replacement: 'β' },
+      { pattern: /\bgamma\b/gi, replacement: 'γ' },
+      { pattern: /\bdelta\b/gi, replacement: 'Δ' },
+      { pattern: /\binfinity\b/gi, replacement: '∞' },
+      { pattern: /\bsquare root of\b/gi, replacement: '√' },
+      { pattern: /\bsum of\b/gi, replacement: 'Σ' },
+      
+      // Parentheses
+      { pattern: /\bopen parenthesis\b/gi, replacement: '(' },
+      { pattern: /\bclose parenthesis\b/gi, replacement: ')' },
+      { pattern: /\bleft parenthesis\b/gi, replacement: '(' },
+      { pattern: /\bright parenthesis\b/gi, replacement: ')' }
+    ]
+    
+    // Apply all mathematical replacements
+    mathReplacements.forEach(({ pattern, replacement }) => {
+      converted = converted.replace(pattern, replacement)
+    })
+    
+    // Handle exponents/powers with superscript
+    // "x squared" -> "x²", "x cubed" -> "x³", "x to the power of 4" -> "x⁴"
+    converted = converted.replace(/\b([a-zA-Z])\s*squared\b/gi, '$1²')
+    converted = converted.replace(/\b([a-zA-Z])\s*cubed\b/gi, '$1³')
+    
+    // Handle "to the power of" or "to the nth power"
+    const superscriptMap: { [key: string]: string } = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵',
+      '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+    }
+    
+    // "x to the power of 4" -> "x⁴"
+    converted = converted.replace(/\b([a-zA-Z])\s*to the power of\s*(\d+)\b/gi, (match, base, exp) => {
+      const superscript = exp.split('').map((digit: string) => superscriptMap[digit] || digit).join('')
+      return base + superscript
+    })
+    
+    // "x to the 4th power" -> "x⁴"
+    converted = converted.replace(/\b([a-zA-Z])\s*to the\s*(\d+)(?:st|nd|rd|th)\s*power\b/gi, (match, base, exp) => {
+      const superscript = exp.split('').map((digit: string) => superscriptMap[digit] || digit).join('')
+      return base + superscript
+    })
+    
+    // Handle simple expressions like "x squared equals 19 minus 6"
+    // This will already be converted by the above rules to "x² = 19 - 6"
+    
+    return converted
+  }
+
+  const startAudioAnalysis = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // Create audio context and analyser
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      
+      const source = audioContextRef.current.createMediaStreamSource(stream)
+      source.connect(analyserRef.current)
+      
+      analyserRef.current.fftSize = 128 // Smaller FFT for faster processing
+      analyserRef.current.smoothingTimeConstant = 0.3 // Less smoothing for more responsive detection
+      const bufferLength = analyserRef.current.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      
+      const analyzeAudio = () => {
+        if (!analyserRef.current) return
+        
+        // Use time domain data for more immediate response
+        analyserRef.current.getByteTimeDomainData(dataArray)
+        
+        // Calculate RMS (Root Mean Square) for more accurate volume detection
+        let sum = 0
+        for (let i = 0; i < bufferLength; i++) {
+          const sample = (dataArray[i] - 128) / 128 // Convert to -1 to 1 range
+          sum += sample * sample
+        }
+        const rms = Math.sqrt(sum / bufferLength)
+        
+        // Use a higher threshold to filter out white noise but still be responsive
+        const threshold = 0.010
+        setAudioLevel(rms)
+        setIsVoiceActive(rms > threshold)
+        
+        // Continue animation loop
+        animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+      }
+      
+      // Start the animation loop
+      analyzeAudio()
+    } catch (error) {
+      console.error('Error setting up audio analysis:', error)
+    }
+  }
+
+  const stopAudioAnalysis = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close()
+      audioContextRef.current = null
+    }
+    
+    analyserRef.current = null
+    setAudioLevel(0)
+    setIsVoiceActive(false)
+  }
+
+  const handleVoiceRecording = () => {
+    if (!recognition) {
+      toast({
+        title: "Voice Recording Not Supported",
+        description: "Your browser doesn't support voice recording. Please use a modern browser like Chrome, Edge, or Safari.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isRecording) {
+      recognition.stop()
+      stopAudioAnalysis()
+    } else {
+      // Request microphone permission and start recording
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(async () => {
+          recognition.start()
+          await startAudioAnalysis()
+        })
+        .catch((error) => {
+          console.error('Microphone permission denied:', error)
+          toast({
+            title: "Microphone Access Required",
+            description: "Please allow microphone access to use voice dictation.",
+            variant: "destructive",
+          })
+        })
     }
   }
 
@@ -640,12 +1013,17 @@ export default function AITutorPage() {
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me anything about your studies..."
-                className="min-h-[80px] md:min-h-[80px] pr-12 resize-none text-base"
+                placeholder={!isRecording ? "Ask me anything about your studies..." : ""}
+                className="min-h-[80px] md:min-h-[80px] pr-16 resize-none text-base"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
                     handleFormSubmit(e)
+                  }
+                  // Voice recording shortcut: Ctrl/Cmd + Shift + M
+                  if (e.key === "M" && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+                    e.preventDefault()
+                    handleVoiceRecording()
                   }
                 }}
               />
@@ -659,10 +1037,39 @@ export default function AITutorPage() {
               </Button>
             </div>
 
+            {isRecording && (
+              <div className="flex items-center gap-3 py-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                  <span className="text-xs text-red-600 font-medium">Listening...Speak your question or answer aloud.</span>
+                <div className="flex items-end gap-1 ml-2">
+                  {waveformHeights.map((height, i) => (
+                    <div
+                      key={i}
+                      className="w-1 bg-red-500 rounded-full transition-all duration-50 ease-out"
+                      style={{
+                        height: isVoiceActive ? `${height}px` : '4px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2 items-center md:flex-row md:gap-2 md:justify-start w-full">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               <div className="w-full flex md:hidden">
-                <div className="grid grid-cols-3 gap-2 w-full">
+                <div className="grid grid-cols-4 gap-2 w-full">
+                  <Button
+                    type="button"
+                    variant={isRecording ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleVoiceRecording}
+                    disabled={!recognition}
+                    className="flex flex-col items-center justify-center h-10"
+                  >
+                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <span className="text-xs">{isRecording ? "Stop" : "Dictate"}</span>
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -705,6 +1112,17 @@ export default function AITutorPage() {
               <div className="hidden md:flex items-center gap-2">
                 <Button
                   type="button"
+                  variant={isRecording ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleVoiceRecording}
+                  disabled={!recognition}
+                  className="flex items-center gap-2 h-9 md:h-8"
+                >
+                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  <span>{isRecording ? "Stop Recording" : "Dictate"}</span>
+                </Button>
+                <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
@@ -740,9 +1158,15 @@ export default function AITutorPage() {
                   <CalculatorIcon className="h-4 w-4" />
                   <span>Calculator</span>
                 </Button>
+                              </div>
               </div>
-              <span className="text-xs text-muted-foreground ml-2 hidden md:inline">Press Enter to send, Shift+Enter for new line</span>
-            </div>
+              <div className="text-xs text-muted-foreground ml-2 hidden md:block">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Press Enter to send</li>
+                  <li>Shift+Enter for new line</li>
+                  <li>Ctrl+Shift+M for voice</li>
+                </ul>
+              </div>
           </form>
         </div>
       </Card>
